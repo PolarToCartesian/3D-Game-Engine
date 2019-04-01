@@ -26,3 +26,11 @@ This project's goal is to build a simple 3D java rendering engine from stratch.
 **And More To Come !**
 
 ## ScreenShots
+
+### Teepot
+ 
+![Bunny](screenshots/teepot.jpg)
+  
+### Bunny
+
+![Bunny](screenshots/bunny.jpg)
