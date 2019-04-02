@@ -16,12 +16,17 @@ This project's goal is to build a simple 3D java rendering engine from stratch.
 + **Simple Lighting**
   + *Multiple Point Lights*
   + *Considers Distance (with the inverse square law)*
+  + *Pixel Per Pixel Lighting*
 
 ## Todo List
 
 + **Lighting**
   + *Light Color*
-  + *Pixel Per Pixel Lighting*
++ **Performance**
+  + *Triangle Cliping*
++ **Other**
+  + *Use a better perspective matrix*
+  + *Depth Buffer*
   
 **And More To Come !**
 

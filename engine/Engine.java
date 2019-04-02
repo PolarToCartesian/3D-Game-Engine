@@ -12,6 +12,8 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -309,23 +311,106 @@ public abstract class Engine {
 	}
 
 	private static class TriangleRender2D {
-		int[] xPoints;
-		int[] yPoints;
+		Vector[] vertices;
+		Vector[] colors = new Vector[3];
 		float z;
 
-		Color color;
-
-		TriangleRender2D(Vector[] _vertices, Color _color) {
-			this.xPoints = new int[] { (int) _vertices[0].x, (int) _vertices[1].x, (int) _vertices[2].x };
-			this.yPoints = new int[] { (int) _vertices[0].y, (int) _vertices[1].y, (int) _vertices[2].y };
-
+		TriangleRender2D(Vector[] _vertices, Color[] _colors) {
+			this.vertices = _vertices;
+			
+			for (int i = 0; i < 3; i++) { 
+				this.vertices[i].x = (int) this.vertices[i].x; 
+				this.vertices[i].y = (int) this.vertices[i].y; 
+				
+				this.colors[i] = new Vector( _colors[i].getRed(), _colors[i].getGreen(), _colors[i].getBlue() );
+			}
+						
 			this.z = _vertices[0].z + _vertices[1].z + _vertices[2].z; // No Need to Divide By Three
-			this.color = _color;
 		}
-
+		
+		private float constrain(float val, float _min, float _max) {
+			if (val > _max) val = _max;
+			if (val < _min) val = _min;
+			
+			return val;
+		}
+		
 		void render(Graphics g) {
-			g.setColor(color);
-			g.fillPolygon(xPoints, yPoints, 3);
+			// https://codeplea.com/triangular-interpolation
+			
+			// Step 1 : calculate weights
+			
+			float denominator = (this.vertices[1].y - this.vertices[2].y) * (this.vertices[0].x - this.vertices[2].x) + (this.vertices[2].x - this.vertices[1].x) * (this.vertices[0].y - this.vertices[2].y);
+			
+			// Step 1.5 : precalculate values
+			
+			float preCalc1 = (this.vertices[1].y - this.vertices[2].y);
+			float preCalc2 = (this.vertices[2].x - this.vertices[1].x);
+			float preCalc3 = (this.vertices[2].y - this.vertices[0].y);
+			float preCalc4 = (this.vertices[0].x - this.vertices[2].x);
+			
+			Vector t0 = vertices[0];
+			Vector t1 = vertices[1];
+			Vector t2 = vertices[2];
+
+			// https://github.com/ssloy/tinyrenderer/wiki/Lesson-2:-Triangle-rasterization-and-back-face-culling
+			
+			if (t0.y == t1.y && t0.y == t2.y) return;
+
+			if (t0.y > t1.y) { Vector temp = t0.copy(); t0 = t1.copy(); t1 = temp.copy(); }
+			if (t0.y > t2.y) { Vector temp = t0.copy(); t0 = t2.copy(); t2 = temp.copy(); }
+			if (t1.y > t2.y) { Vector temp = t2.copy(); t2 = t1.copy(); t1 = temp.copy(); }
+
+			int total_height = (int) (t2.y - t0.y);
+
+			for (int i = 0; i<total_height; i++) {
+				boolean second_half = i > t1.y - t0.y || t1.y == t0.y;
+
+				int segment_height = (int) (second_half ? t2.y - t1.y : t1.y - t0.y);
+
+				float alpha = i / (float) total_height;
+				float beta  = (i - (second_half ? t1.y - t0.y : 0)) / segment_height;
+
+				Vector A = Vector.add( t0, Vector.mul( Vector.sub(t2, t0) , alpha ) );
+				Vector B = second_half ?  Vector.add( t1, Vector.mul( Vector.sub(t2, t1) , beta ) ) : Vector.add( t0, Vector.mul( Vector.sub(t1, t0), beta ));
+
+				if (A.x > B.x) { Vector temp = A.copy(); A = B.copy(); B = temp.copy(); }
+
+				for (int x = (int) A.x; x <= B.x; x++) {
+					int y = (int) (t0.y + i);
+
+					if (x >= 0 && y >= 0) {
+						// https://codeplea.com/triangular-interpolation
+						
+						float preCalc5 = (x - this.vertices[2].x);
+						float preCalc6 = (y - this.vertices[2].y);
+						
+						float[] weights = new float[] {
+							(preCalc1 * preCalc5 + preCalc2 * preCalc6) / denominator, 
+							(preCalc3 * preCalc5 + preCalc4 * preCalc6) / denominator, 
+							0, 
+						};
+						
+						weights[2] = 1 - weights[0] - weights[1];
+									
+						// Step 2 : Calculate brightness
+						Vector color = new Vector(0, 0, 0);
+						
+						for (int c = 0; c < 3; c++) {
+							color.add(Vector.mul(this.colors[c], weights[c]));
+						}
+						
+						color.div(weights[0] + weights[1] + weights[2]);
+						
+						color.x = constrain(color.x, 0, 255);
+						color.y = constrain(color.y, 0, 255);
+						color.z = constrain(color.z, 0, 255);
+						
+						g.setColor(new Color((int) color.x, (int) color.y, (int) color.z));
+						g.fillRect(x, y, 1, 1);
+					}
+				}
+			}
 		}
 	}
 
@@ -407,7 +492,7 @@ public abstract class Engine {
 		public void mouseExited(MouseEvent e)   {}
 		public void mouseReleased(MouseEvent e) { onMouseRelease(); mousePressed = false; }
 	}
-
+	
 	private static class SortByDistance implements Comparator<TriangleRender2D> {
 		@Override
 		public int compare(TriangleRender2D a, TriangleRender2D b) {
@@ -428,34 +513,48 @@ public abstract class Engine {
 			return (Vector.dotProduct(_surfaceNormal, triangleToCamera) > 0.f);
 		}
 
-		private float getIllumination(Vector[] _rotatedVertices, Vector _surfaceNormal) {
+		private Color[] getColorsWIllumination(Vector[] _rotatedVertices, Vector _surfaceNormal, Color _color) {
 			// Total Brightness
-			float summedBrightness = 0;
-
-			Vector triangleRotatedCenter = Vector.div(Vector.add(Vector.add(_rotatedVertices[0], _rotatedVertices[1]), _rotatedVertices[2]), 3);
+			float[] summedBrightness = new float[3];
+			
+			Color[] colorsWlighting = new Color[3];
 
 			// For Every Light
 			for (Light light : lights) {
-				// No Need To Translate The Light's position and the triangle's position because it would cancel out
-				Vector triangleToLight = Vector.sub(light.position, triangleRotatedCenter);
+				// For Each Vertex
+				for (int i = 0; i < 3; i++) {
+					// No Need To Translate The Light's position and the triangle's position because it would cancel out
+					Vector vertexToLight = Vector.sub(light.position, _rotatedVertices[i]);
 
-				float distanceSquared = (float) Math.pow(triangleToLight.getLength(), 2);
+					float distance = (float) vertexToLight.getLength();
 
-				triangleToLight.normalize();
+					vertexToLight.normalize();
 
-				float dotProductTriangleAndLight = Vector.dotProduct(triangleToLight, _surfaceNormal);
+					float dotProductTriangleAndLight = Vector.dotProduct(vertexToLight, _surfaceNormal);
+					
+					if (dotProductTriangleAndLight > 0f) {
+						dotProductTriangleAndLight = Math.abs(dotProductTriangleAndLight);
+					} else {
+						dotProductTriangleAndLight = 0f;
+					}
 
-				if (dotProductTriangleAndLight > 0f) {
-					dotProductTriangleAndLight = Math.abs(dotProductTriangleAndLight);
-				} else {
-					dotProductTriangleAndLight = 0f;
+					summedBrightness[i] += (dotProductTriangleAndLight * light.intensity) / (distance * distance); // Inverse Square Law
 				}
-
-				summedBrightness += (dotProductTriangleAndLight * light.intensity) / distanceSquared; // Inverse Square Law
 			}
 
-			// Limit the brightness to 1
-			return (summedBrightness <= 1f) ? summedBrightness : 1f;
+			for (int i = 0; i < 3; i++) {
+				// Limit the brightness to 1
+				summedBrightness[i] = (summedBrightness[i] <= 1f) ? summedBrightness[i] : 1f;
+			
+				// calculate the new color
+				int newR = (int) (_color.getRed()   * summedBrightness[i]);
+				int newG = (int) (_color.getGreen() * summedBrightness[i]);
+				int newB = (int) (_color.getBlue()  * summedBrightness[i]);
+				
+				colorsWlighting[i] = new Color(newR, newG, newB);
+			}
+			
+			return colorsWlighting;
 		}
 
 		public void paintComponent(Graphics g) {
@@ -528,20 +627,11 @@ public abstract class Engine {
 
 						// If The Triangle Is In Front Of The Camera
 						if (!triangleBehindCamera) {
-							// Calculate Triangle Color with respect to lighting
-							float illumination = getIllumination(rotatedVertices, surfaceNormal);
-
-							// Don't render the triangle if the illumination is 0
-							if (illumination > 0) {
-								int newRed   = (int) (triangle.color.getRed()   * illumination);
-								int newGreen = (int) (triangle.color.getGreen() * illumination);
-								int newBlue  = (int) (triangle.color.getBlue()  * illumination);
-
-								Color triangleColorWithLighting = new Color(newRed, newGreen, newBlue);
-
-								// Add Triangle to the render queue
-								trianglesToRender.add(new TriangleRender2D(manipulatedVertices, triangleColorWithLighting));
-							}
+							// Calculate Triangle's Color with respect to lighting
+							Color[] colors = getColorsWIllumination(rotatedVertices, surfaceNormal, triangle.color);
+							
+							// Add Triangle to the render queue
+							trianglesToRender.add(new TriangleRender2D(manipulatedVertices, colors));
 						}
 					}
 				}

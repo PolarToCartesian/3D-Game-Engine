@@ -9,7 +9,8 @@ public class Main extends Engine {
 	public Main() {
 		super(1920, 1080, "Engine Test App", 90, 30);
 		loadModel("res/bunny.obj", false);
-		lights.add(new Light(Camera.position, Color.RED, 0.05f));
+		
+		lights.add(new Light(Camera.position, Color.RED, 0.02f));
 		run();
 	}
 
