@@ -143,20 +143,23 @@ public abstract class Engine {
 						break;
 
 					case "f":
-						Color color;
-						if (randomColors) {
-							color = new Color(ThreadLocalRandom.current().nextInt(0, 256), ThreadLocalRandom.current().nextInt(0, 256), ThreadLocalRandom.current().nextInt(0, 256));
-						} else {
-							color = new Color(255, 255, 255);
+						Color[] colors = new Color[3];
+						
+						for (int i = 0; i < 3; i++) {
+							if (randomColors) {
+								colors[i] = new Color(ThreadLocalRandom.current().nextInt(0, 256), ThreadLocalRandom.current().nextInt(0, 256), ThreadLocalRandom.current().nextInt(0, 256));
+							} else {
+								colors[i] = new Color(255, 255, 255);
+							}
 						}
-
+						
 						Vector v1 = vertices.get((Integer.parseInt(elements[1].split("/")[0]) - 1));
 						Vector v2 = vertices.get((Integer.parseInt(elements[2].split("/")[0]) - 1));
 						Vector v3 = vertices.get((Integer.parseInt(elements[3].split("/")[0]) - 1));
 
 						Vector[] positions = new Vector[] {v1, v2, v3};
 
-						triangles.add(new Triangle(positions, color));
+						triangles.add(new Triangle(positions, colors));
 						break;
 				}
 			}
@@ -287,11 +290,11 @@ public abstract class Engine {
 		public Vector rotation;
 		public Vector rotationMidPoint = new Vector(0, 0, 0);
 
-		public Color color;
+		public Color[] colors;
 
-		public Triangle(Vector[] _vertices, Color _color) {
+		public Triangle(Vector[] _vertices, Color[] _colors) {
 			this.vertices = _vertices;
-			this.color = _color;
+			this.colors = _colors;
 			this.rotation = new Vector(0, 0, 0);
 		}
 
@@ -321,7 +324,7 @@ public abstract class Engine {
 			for (int i = 0; i < 3; i++) { 
 				this.vertices[i].x = (int) this.vertices[i].x; 
 				this.vertices[i].y = (int) this.vertices[i].y; 
-				
+											
 				this.colors[i] = new Vector( _colors[i].getRed(), _colors[i].getGreen(), _colors[i].getBlue() );
 			}
 						
@@ -392,8 +395,8 @@ public abstract class Engine {
 						};
 						
 						weights[2] = 1 - weights[0] - weights[1];
-									
-						// Step 2 : Calculate brightness
+						
+						// Step 2 : Calculate pixel color with brightness
 						Vector color = new Vector(0, 0, 0);
 						
 						for (int c = 0; c < 3; c++) {
@@ -402,6 +405,7 @@ public abstract class Engine {
 						
 						color.div(weights[0] + weights[1] + weights[2]);
 						
+						// Limit values between 0 and 255
 						color.x = constrain(color.x, 0, 255);
 						color.y = constrain(color.y, 0, 255);
 						color.z = constrain(color.z, 0, 255);
@@ -513,11 +517,10 @@ public abstract class Engine {
 			return (Vector.dotProduct(_surfaceNormal, triangleToCamera) > 0.f);
 		}
 
-		private Color[] getColorsWIllumination(Vector[] _rotatedVertices, Vector _surfaceNormal, Color _color) {
+		private Color[] getColorsWIllumination(Vector[] _rotatedVertices, Vector _surfaceNormal, Color[] _colors) {
 			// Total Brightness
 			float[] summedBrightness = new float[3];
-			
-			Color[] colorsWlighting = new Color[3];
+			Color[] colorsWlighting  = new Color[3];
 
 			// For Every Light
 			for (Light light : lights) {
@@ -545,12 +548,12 @@ public abstract class Engine {
 			for (int i = 0; i < 3; i++) {
 				// Limit the brightness to 1
 				summedBrightness[i] = (summedBrightness[i] <= 1f) ? summedBrightness[i] : 1f;
-			
+							
 				// calculate the new color
-				int newR = (int) (_color.getRed()   * summedBrightness[i]);
-				int newG = (int) (_color.getGreen() * summedBrightness[i]);
-				int newB = (int) (_color.getBlue()  * summedBrightness[i]);
-				
+				int newR = (int) (_colors[i].getRed()   * summedBrightness[i]);
+				int newG = (int) (_colors[i].getGreen() * summedBrightness[i]);
+				int newB = (int) (_colors[i].getBlue()  * summedBrightness[i]);
+								
 				colorsWlighting[i] = new Color(newR, newG, newB);
 			}
 			
@@ -628,8 +631,8 @@ public abstract class Engine {
 						// If The Triangle Is In Front Of The Camera
 						if (!triangleBehindCamera) {
 							// Calculate Triangle's Color with respect to lighting
-							Color[] colors = getColorsWIllumination(rotatedVertices, surfaceNormal, triangle.color);
-							
+							Color[] colors = getColorsWIllumination(rotatedVertices, surfaceNormal, triangle.colors);
+														
 							// Add Triangle to the render queue
 							trianglesToRender.add(new TriangleRender2D(manipulatedVertices, colors));
 						}
