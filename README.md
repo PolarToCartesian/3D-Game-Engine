@@ -25,14 +25,10 @@ This project's goal is to build a simple 3D java rendering engine from stratch.
 
 ## Thanks to these people for their algorithms and helpful resources
 
-+ **Triangle Interpelation (color)**
-  + [Link](https://codeplea.com/triangular-interpolation)
-+ **Triangle 2D Rendering**
-  + [Link](https://github.com/ssloy/tinyrenderer/wiki/Lesson-2:-Triangle-rasterization-and-back-face-culling)
-+ **3D Rotation**
-  + [Link](http://mathworld.wolfram.com/RotationMatrix.html)
-+ **Projection Matrix**
-  + [Link](https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/building-basic-perspective-projection-matrix)
++ **[Triangle Interpelation (color)](https://codeplea.com/triangular-interpolation)**
++ **[Triangle 2D Rendering](https://github.com/ssloy/tinyrenderer/wiki/Lesson-2:-Triangle-rasterization-and-back-face-culling)**
++ **[3D Rotation](http://mathworld.wolfram.com/RotationMatrix.html)**
++ **[Projection Matrix](https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/building-basic-perspective-projection-matrix)**
 
 ## Todo List
 
