@@ -8,9 +8,9 @@ public class Main extends Engine {
 
 	public Main() {
 		super(1920, 1080, "Engine Test App", 90, 30);
-		loadModel("res/dragon.obj", false);
+		loadModel("res/teepot.obj", true);
 		
-		lights.add(new Light(Camera.position, Color.RED, 15f));
+		lights.add(new Light(Camera.position, new Vector(255, 255, 255), 15f));
 		run();
 	}
 

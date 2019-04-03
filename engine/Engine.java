@@ -143,13 +143,13 @@ public abstract class Engine {
 						break;
 
 					case "f":
-						Color[] colors = new Color[3];
+						Vector[] colors = new Vector[3];
 						
 						for (int i = 0; i < 3; i++) {
 							if (randomColors) {
-								colors[i] = new Color(ThreadLocalRandom.current().nextInt(0, 256), ThreadLocalRandom.current().nextInt(0, 256), ThreadLocalRandom.current().nextInt(0, 256));
+								colors[i] = new Vector(ThreadLocalRandom.current().nextInt(0, 256), ThreadLocalRandom.current().nextInt(0, 256), ThreadLocalRandom.current().nextInt(0, 256));
 							} else {
-								colors[i] = new Color(255, 255, 255);
+								colors[i] = new Vector(255, 255, 255);
 							}
 						}
 						
@@ -243,6 +243,8 @@ public abstract class Engine {
 		public Vector(float _x, float _y, float _z) { this.x = _x; this.y = _y; this.z = _z; }
 		public Vector(float _x, float _y, float _z, float _w) { this.x = _x; this.y = _y; this.z = _z; this.w = _w; }
 
+		public Vector(Color _color) { this.x = _color.getRed(); this.y = _color.getGreen(); this.z = _color.getBlue(); }
+		
 		public Vector copy() { return new Vector(this.x, this.y, this.z); }
 
 		public void add(float _x, float _y, float _z) { this.x += _x; this.y += _y; this.z += _z; }
@@ -260,6 +262,14 @@ public abstract class Engine {
 		public void mul(Vector _v) { this.mul(_v.x, _v.y, _v.z); }
 		public void div(Vector _v) { this.div(_v.x, _v.y, _v.z); }
 
+		public Color getColor() { return new Color( (int) this.x, (int) this.y, (int) this.z ); }
+		
+		public void constrain() { // 0-255
+			x = (x < 0) ? 0 : ( (x > 255) ? 255 : x );
+			y = (y < 0) ? 0 : ( (y > 255) ? 255 : y );
+			z = (z < 0) ? 0 : ( (z > 255) ? 255 : z );
+		}
+		
 		public float getLength() { return (float) Math.sqrt( this.x * this.x + this.y * this.y + this.z * this.z ); }
 		public void  normalize() { this.div(this.getLength()); }
 
@@ -278,6 +288,9 @@ public abstract class Engine {
 		public static Vector sub(Vector _a, Vector _b) { Vector result = _a.copy(); result.sub(_b); return result; }
 		public static Vector mul(Vector _a, Vector _b) { Vector result = _a.copy(); result.mul(_b); return result; }
 		public static Vector div(Vector _a, Vector _b) { Vector result = _a.copy(); result.div(_b); return result; }
+	
+		public static Color  getColor(Vector _v) { return _v.getColor(); } 
+		public static Vector getConstrained(Vector _v) { Vector result = _v.copy(); result.constrain(); return result; }
 	}
 
 	protected static class Camera {
@@ -289,12 +302,11 @@ public abstract class Engine {
 		public Vector[] vertices;
 		public Vector rotation;
 		public Vector rotationMidPoint = new Vector(0, 0, 0);
+		public Vector[] colors;
 
-		public Color[] colors;
-
-		public Triangle(Vector[] _vertices, Color[] _colors) {
+		public Triangle(Vector[] _vertices, Vector[] _colors) {
 			this.vertices = _vertices;
-			this.colors = _colors;
+			this.colors   = _colors;
 			this.rotation = new Vector(0, 0, 0);
 		}
 
@@ -318,15 +330,15 @@ public abstract class Engine {
 		Vector[] colors = new Vector[3];
 		float z;
 
-		TriangleRender2D(Vector[] _vertices, Color[] _colors) {
+		TriangleRender2D(Vector[] _vertices, Vector[] _colors) {
 			this.vertices = _vertices;
 			
 			for (int i = 0; i < 3; i++) { 
 				this.vertices[i].x = (int) this.vertices[i].x; 
-				this.vertices[i].y = (int) this.vertices[i].y; 
-											
-				this.colors[i] = new Vector( _colors[i].getRed(), _colors[i].getGreen(), _colors[i].getBlue() );
+				this.vertices[i].y = (int) this.vertices[i].y; 											
 			}
+			
+			this.colors = _colors;
 						
 			this.z = _vertices[0].z + _vertices[1].z + _vertices[2].z; // No Need to Divide By Three
 		}
@@ -338,7 +350,7 @@ public abstract class Engine {
 			return val;
 		}
 		
-		void render(Graphics g) {
+		void render(Graphics g, int _screenWidth, int _screenHeight) {
 			// https://codeplea.com/triangular-interpolation
 			
 			// Step 1 : calculate weights
@@ -382,7 +394,7 @@ public abstract class Engine {
 				for (int x = (int) A.x; x <= B.x; x++) {
 					int y = (int) (t0.y + i);
 
-					if (x >= 0 && y >= 0) {
+					if (x >= 0 && y >= 0 && x < _screenWidth && y < _screenHeight) {
 						// https://codeplea.com/triangular-interpolation
 						
 						float preCalc5 = (x - this.vertices[2].x);
@@ -399,6 +411,7 @@ public abstract class Engine {
 						// Step 2 : Calculate pixel color with brightness
 						Vector color = new Vector(0, 0, 0);
 						
+						// For every vertex
 						for (int c = 0; c < 3; c++) {
 							color.add(Vector.mul(this.colors[c], weights[c]));
 						}
@@ -406,11 +419,9 @@ public abstract class Engine {
 						color.div(weights[0] + weights[1] + weights[2]);
 						
 						// Limit values between 0 and 255
-						color.x = constrain(color.x, 0, 255);
-						color.y = constrain(color.y, 0, 255);
-						color.z = constrain(color.z, 0, 255);
+						color.constrain();
 						
-						g.setColor(new Color((int) color.x, (int) color.y, (int) color.z));
+						g.setColor(color.getColor());
 						g.fillRect(x, y, 1, 1);
 					}
 				}
@@ -420,11 +431,11 @@ public abstract class Engine {
 
 	public static class Light {
 		public Vector position;
-		public Color color;
+		public Vector color;
 
 		public float intensity;
 
-		public Light(Vector _position, Color _color, float _intensity) {
+		public Light(Vector _position, Vector _color, float _intensity) {
 			this.position = _position;
 			this.color = _color;
 			this.intensity = _intensity;
@@ -517,44 +528,45 @@ public abstract class Engine {
 			return (Vector.dotProduct(_surfaceNormal, triangleToCamera) > 0.f);
 		}
 
-		private Color[] getColorsWIllumination(Vector[] _rotatedVertices, Vector _surfaceNormal, Color[] _colors) {
+		private Vector[] getColorsWIllumination(Vector[] _rotatedVertices, Vector _surfaceNormal, Vector[] _colors) {
 			// Total Brightness
-			float[] summedBrightness = new float[3];
-			Color[] colorsWlighting  = new Color[3];
+			Vector[] colorsWlighting = new Vector[3];
 
-			// For Every Light
-			for (Light light : lights) {
-				// For Each Vertex
-				for (int i = 0; i < 3; i++) {
-					// No Need To Translate The Light's position and the triangle's position because it would cancel out
-					Vector vertexToLight = Vector.sub(light.position, _rotatedVertices[i]);
-
-					float distance = (float) vertexToLight.getLength();
-
-					vertexToLight.normalize();
-
-					float dotProductTriangleAndLight = Vector.dotProduct(vertexToLight, _surfaceNormal);
-					
-					if (dotProductTriangleAndLight > 0f) {
-						dotProductTriangleAndLight = Math.abs(dotProductTriangleAndLight);
-					} else {
-						dotProductTriangleAndLight = 0f;
-					}
-
-					summedBrightness[i] += (dotProductTriangleAndLight * light.intensity) / (distance * distance); // Inverse Square Law
-				}
-			}
-
+			// For Each Vertex
 			for (int i = 0; i < 3; i++) {
-				// Limit the brightness to 1
-				summedBrightness[i] = (summedBrightness[i] <= 1f) ? summedBrightness[i] : 1f;
-							
+				Vector vertexColor = new Vector(0, 0, 0);
+				
+				// For Every Light
+				for (Light light : lights) {
+						// No Need To Translate The Light's position and the triangle's position because it would cancel out
+						Vector vertexToLight = Vector.sub(light.position, _rotatedVertices[i]);
+	
+						float distance = (float) vertexToLight.getLength();
+	
+						vertexToLight.normalize();
+	
+						float dotProductTriangleAndLight = Vector.dotProduct(vertexToLight, _surfaceNormal);
+						
+						if (dotProductTriangleAndLight > 0f) {
+							dotProductTriangleAndLight = Math.abs(dotProductTriangleAndLight);
+						} else {
+							dotProductTriangleAndLight = 0f;
+						}
+						
+						float brightness = (dotProductTriangleAndLight * light.intensity) / (distance * distance);
+						
+						vertexColor.add(Vector.mul(Vector.div(light.color, 255), brightness));		
+				}
+				
 				// calculate the new color
-				int newR = (int) (_colors[i].getRed()   * summedBrightness[i]);
-				int newG = (int) (_colors[i].getGreen() * summedBrightness[i]);
-				int newB = (int) (_colors[i].getBlue()  * summedBrightness[i]);
+				
+				vertexColor.mul(_colors[i]);
+				
+				// Limit color range (0-255)
+				
+				vertexColor.constrain();
 								
-				colorsWlighting[i] = new Color(newR, newG, newB);
+				colorsWlighting[i] = vertexColor;
 			}
 			
 			return colorsWlighting;
@@ -631,7 +643,7 @@ public abstract class Engine {
 						// If The Triangle Is In Front Of The Camera
 						if (!triangleBehindCamera) {
 							// Calculate Triangle's Color with respect to lighting
-							Color[] colors = getColorsWIllumination(rotatedVertices, surfaceNormal, triangle.colors);
+							Vector[] colors = getColorsWIllumination(rotatedVertices, surfaceNormal, triangle.colors);
 														
 							// Add Triangle to the render queue
 							trianglesToRender.add(new TriangleRender2D(manipulatedVertices, colors));
@@ -645,7 +657,7 @@ public abstract class Engine {
 				// Render Triangles
 				for (TriangleRender2D triangle : trianglesToRender) {
 					// Render The Triangle
-					triangle.render(g);
+					triangle.render(g, this.getWidth(), this.getHeight());
 				}
 			} catch (java.util.ConcurrentModificationException e) {
 				e.printStackTrace();
