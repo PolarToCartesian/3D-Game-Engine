@@ -5,10 +5,10 @@ import engine.Engine;
 public class Main extends Engine {
 
 	public Main() {
-		super(1920, 1080, "Engine Test App", 90, 30);
-		loadModel("res/teepot.obj", true);
+		super(1920/2, 1080/2, "Engine Test App", 90, 30);
+		loadModel("res/teapot.obj", false);
 		
-		lights.add(new Light(Camera.position, new Vector(255, 255, 255), 15f));
+		lights.add(new Light(Camera.position, new Vector(255, 255, 255), 5f));
 		run();
 	}
 

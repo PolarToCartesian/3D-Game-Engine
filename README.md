@@ -41,9 +41,9 @@ This project's goal is to build a simple 3D java rendering engine from stratch.
 
 ## ScreenShots
 
-### Teepot
+### Teapot
  
-![Teepot](screenshots/teepot.jpg)
+![Teapot](screenshots/teapot.jpg)
   
 ### Bunny
 

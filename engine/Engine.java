@@ -130,21 +130,29 @@ public abstract class Engine {
 		try (BufferedReader br = new BufferedReader(new FileReader(fileLocation))) {
 			String line;
 			ArrayList<Vector> vertices = new ArrayList<Vector>();
-
+			
 			while ((line = br.readLine()) != null) {
 				String[] elements = line.split(" ");
 
 				switch (elements[0]) {
-					case "v":
-						Vector vertex = new Vector((float) Double.parseDouble(elements[1]),
-												   (float) Double.parseDouble(elements[2]),
-									               (float) Double.parseDouble(elements[3]));
+					case "v":						
+						int startIndex = elements.length == 4 ? 1 : 2;
+						
+						Vector vertex = new Vector((float) Double.parseDouble(elements[startIndex]),
+												   (float) Double.parseDouble(elements[startIndex+1]),
+									               (float) Double.parseDouble(elements[startIndex+2]));
 
 						vertices.add(vertex);
 						break;
 
 					case "f":
 						Vector[] colors = new Vector[3];
+						
+						Vector v1 = vertices.get((Integer.parseInt(elements[1].split("/")[0]) - 1));
+						Vector v2 = vertices.get((Integer.parseInt(elements[2].split("/")[0]) - 1));
+						Vector v3 = vertices.get((Integer.parseInt(elements[3].split("/")[0]) - 1));
+
+						Vector[] positions = new Vector[] {v1, v2, v3};
 						
 						for (int i = 0; i < 3; i++) {
 							if (randomColors) {
@@ -153,12 +161,6 @@ public abstract class Engine {
 								colors[i] = new Vector(255, 255, 255);
 							}
 						}
-						
-						Vector v1 = vertices.get((Integer.parseInt(elements[1].split("/")[0]) - 1));
-						Vector v2 = vertices.get((Integer.parseInt(elements[2].split("/")[0]) - 1));
-						Vector v3 = vertices.get((Integer.parseInt(elements[3].split("/")[0]) - 1));
-
-						Vector[] positions = new Vector[] {v1, v2, v3};
 
 						triangles.add(new Triangle(positions, colors));
 						break;
@@ -506,9 +508,9 @@ public abstract class Engine {
 	private class MouseMotionHandler implements MouseMotionListener {
 		public void mouseDragged(MouseEvent me) {}
 
-		public void mouseMoved(MouseEvent me) {
+		public void mouseMoved(MouseEvent me) {			
 			mousePosition.x = me.getLocationOnScreen().x - frame.getX();
-			mousePosition.y = me.getLocationOnScreen().y - frame.getY();
+			mousePosition.y = me.getLocationOnScreen().y - frame.getY();		
 		}
 	}
 
