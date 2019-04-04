@@ -2,8 +2,6 @@ package main;
 
 import engine.Engine;
 
-import java.awt.Color;
-
 public class Main extends Engine {
 
 	public Main() {
@@ -17,7 +15,7 @@ public class Main extends Engine {
 	@Override
 	public void update(long deltaTimeMs) {
 		for (Triangle tr : triangles) {
-		//	tr.rotation.y += 0.01f;
+			tr.rotation.y += 0.0001f * deltaTimeMs;
 		}
 	}
 

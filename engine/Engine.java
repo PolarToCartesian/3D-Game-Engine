@@ -12,9 +12,6 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.concurrent.ThreadLocalRandom;
 
 public abstract class Engine {
@@ -31,7 +28,8 @@ public abstract class Engine {
 	private Point mousePosition = new Point(0, 0);
 
 	private float[][] perspectiveMatrix;
-
+	float[][] depthBuffer;
+	
 	protected ArrayList<Triangle> triangles = new ArrayList<>();
 	protected ArrayList<Light> lights = new ArrayList<>();
 
@@ -43,7 +41,8 @@ public abstract class Engine {
 		this.fps = _fps;
 
 		this.perspectiveMatrix = MatrixOperations.createPerspectiveMatrix(this.screenWidth, this.screenHeight, this.fov, 0.01f, 1000f);
-
+		this.depthBuffer = new float[this.screenWidth][this.screenHeight];
+		
 		this.panel = new Panel();
 		this.frame = new JFrame(this.screenTitle);
 
@@ -100,6 +99,7 @@ public abstract class Engine {
 
 		this.frame.setSize(this.screenWidth, this.screenHeight);
 		this.perspectiveMatrix = MatrixOperations.createPerspectiveMatrix(this.screenWidth, this.screenHeight, this.fov, 0.01f, 1000f);
+		this.depthBuffer = new float[this.screenWidth][this.screenHeight];
 	}
 
 	protected void setScreenHeight(int _screenHeight) {
@@ -107,6 +107,7 @@ public abstract class Engine {
 
 		this.frame.setSize(this.screenWidth, this.screenHeight);
 		this.perspectiveMatrix = MatrixOperations.createPerspectiveMatrix(this.screenWidth, this.screenHeight, this.fov, 0.01f, 1000f);
+		this.depthBuffer = new float[this.screenWidth][this.screenHeight];
 	}
 
 	protected void setScreenTitle(String _screenTitle) {
@@ -192,7 +193,7 @@ public abstract class Engine {
 			return new float[][] {
 					{aspectRatio * a, 0, 0, 0},
 					{0, a, 0, 0},
-					{0, 0, _zFar / (_zFar - _zNear), 1},
+					{0, 0, -_zFar / (_zFar - _zNear), 1},
 					{0, 0, (-_zFar * _zNear) / (_zFar - _zNear), 0}
 			};
 		}
@@ -325,10 +326,9 @@ public abstract class Engine {
 
 	}
 
-	private static class TriangleRender2D {
+	private class TriangleRender2D {
 		Vector[] vertices;
 		Vector[] colors = new Vector[3];
-		float z;
 
 		TriangleRender2D(Vector[] _vertices, Vector[] _colors) {
 			this.vertices = _vertices;
@@ -338,11 +338,10 @@ public abstract class Engine {
 				this.vertices[i].y = (int) this.vertices[i].y; 											
 			}
 			
-			this.colors = _colors;
-						
-			this.z = _vertices[0].z + _vertices[1].z + _vertices[2].z; // No Need to Divide By Three
+			this.colors = _colors;						
 		}
 		
+		@SuppressWarnings("unused")
 		private float constrain(float val, float _min, float _max) {
 			if (val > _max) val = _max;
 			if (val < _min) val = _min;
@@ -408,21 +407,34 @@ public abstract class Engine {
 						
 						weights[2] = 1 - weights[0] - weights[1];
 						
-						// Step 2 : Calculate pixel color with brightness
+						float weightSum = weights[0] + weights[1] + weights[2];
+						
+						// Pixel Color
 						Vector color = new Vector(0, 0, 0);
+						
+						// Pixel Depth (w)
+						float w = 0;
 						
 						// For every vertex
 						for (int c = 0; c < 3; c++) {
 							color.add(Vector.mul(this.colors[c], weights[c]));
+							w += vertices[c].w * weights[c];
 						}
 						
-						color.div(weights[0] + weights[1] + weights[2]);
+						w /= weightSum;
 						
-						// Limit values between 0 and 255
-						color.constrain();
-						
-						g.setColor(color.getColor());
-						g.fillRect(x, y, 1, 1);
+						// If the pixel is in front
+						if (w < depthBuffer[x][y] || depthBuffer[x][y] == 0) {
+							depthBuffer[x][y] = w;
+							
+							color.div(weightSum);
+							
+							// Limit values between 0 and 255
+							color.constrain();
+							
+							g.setColor(color.getColor());
+							g.fillRect(x, y, 1, 1);
+						}
 					}
 				}
 			}
@@ -507,16 +519,6 @@ public abstract class Engine {
 		public void mouseExited(MouseEvent e)   {}
 		public void mouseReleased(MouseEvent e) { onMouseRelease(); mousePressed = false; }
 	}
-	
-	private static class SortByDistance implements Comparator<TriangleRender2D> {
-		@Override
-		public int compare(TriangleRender2D a, TriangleRender2D b) {
-			if (a.z < b.z) return 1;
-			if (a.z > b.z) return -1;
-
-			return 0;
-		}
-	}
 
 	private class Panel extends JPanel {
 		private static final long serialVersionUID = 1L;
@@ -576,6 +578,8 @@ public abstract class Engine {
 			g.setColor(Color.BLACK);
 			g.fillRect(0, 0, screenWidth, screenHeight);
 
+			depthBuffer = new float[this.getWidth()][this.getHeight()];
+			
 			try {
 				ArrayList<TriangleRender2D> trianglesToRender = new ArrayList<>();
 
@@ -650,9 +654,6 @@ public abstract class Engine {
 						}
 					}
 				}
-
-				// Sort Triangles By Distance
-				trianglesToRender.sort(new SortByDistance());
 
 				// Render Triangles
 				for (TriangleRender2D triangle : trianglesToRender) {
