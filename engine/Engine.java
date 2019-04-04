@@ -87,6 +87,7 @@ public abstract class Engine {
 	}
 
 	private void cleanUp() {
+		// Prevent Overflow
 		Camera.rotation.x %= (2 * Math.PI);
 		Camera.rotation.y %= (2 * Math.PI);
 		Camera.rotation.z %= (2 * Math.PI);
@@ -365,9 +366,9 @@ public abstract class Engine {
 			float preCalc3 = (this.vertices[2].y - this.vertices[0].y);
 			float preCalc4 = (this.vertices[0].x - this.vertices[2].x);
 			
-			Vector t0 = vertices[0];
-			Vector t1 = vertices[1];
-			Vector t2 = vertices[2];
+			Vector t0 = vertices[0].copy();
+			Vector t1 = vertices[1].copy();
+			Vector t2 = vertices[2].copy();
 
 			// https://github.com/ssloy/tinyrenderer/wiki/Lesson-2:-Triangle-rasterization-and-back-face-culling
 			
@@ -577,7 +578,7 @@ public abstract class Engine {
 		}
 
 		public void paintComponent(Graphics g) {
-			g.setColor(Color.BLACK);
+			g.setColor(Color.RED);
 			g.fillRect(0, 0, screenWidth, screenHeight);
 
 			depthBuffer = new float[this.getWidth()][this.getHeight()];
@@ -641,7 +642,7 @@ public abstract class Engine {
 								break;
 							}
 
-							// World To Screen
+							// World To Screen (between -1 and 1 to between 0 and 255)
 							manipulatedVertices[i].x = ((manipulatedVertices[i].x - 1f) / -2f) * this.getWidth();
 							manipulatedVertices[i].y = ((manipulatedVertices[i].y + 1f) /  2f) * this.getHeight();
 						}

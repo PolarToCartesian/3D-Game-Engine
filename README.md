@@ -48,3 +48,7 @@ This project's goal is to build a simple 3D java rendering engine from stratch.
 ### Bunny
 
 ![Bunny](screenshots/bunny.jpg)
+
+### Dragon
+
+![Dragon](screenshots/main.jpg)
