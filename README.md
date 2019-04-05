@@ -34,9 +34,6 @@ This project's goal is to build a simple 3D java rendering engine from stratch.
 
 ## To do List
 
-+ **Performance**
-  + *Triangle Clipping*
-  
 **And More To Come !**
 
 ## ScreenShots

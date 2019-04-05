@@ -380,7 +380,9 @@ public abstract class Engine {
 
 			int total_height = (int) (t2.y - t0.y);
 
-			for (int i = 0; i<total_height; i++) {
+			if (total_height >= _screenHeight) { total_height = _screenHeight - 1; }
+			
+			for (int i = 0; i < total_height; i++) {
 				boolean second_half = i > t1.y - t0.y || t1.y == t0.y;
 
 				int segment_height = (int) (second_half ? t2.y - t1.y : t1.y - t0.y);
@@ -393,10 +395,15 @@ public abstract class Engine {
 
 				if (A.x > B.x) { Vector temp = A.copy(); A = B.copy(); B = temp.copy(); }
 
-				for (int x = (int) A.x; x <= B.x; x++) {
+				int xStart = (int) ((A.x > 0) ? A.x : 0);
+				int xEnd   = (int) ((B.x < _screenWidth - 1) ? B.x : _screenWidth - 1);
+				
+				boolean doBreak = false;
+				
+				for (int x = xStart; x <= xEnd; x++) {
 					int y = (int) (t0.y + i);
 
-					if (x >= 0 && y >= 0 && x < _screenWidth && y < _screenHeight) {
+					if (y >= 0 && y < _screenHeight) {
 						// https://codeplea.com/triangular-interpolation
 						
 						float preCalc5 = (x - this.vertices[2].x);
@@ -438,8 +445,12 @@ public abstract class Engine {
 							g.setColor(color.getColor());
 							g.fillRect(x, y, 1, 1);
 						}
+					} else {
+						doBreak = true;
 					}
 				}
+				
+				if (doBreak) break;
 			}
 		}
 	}
