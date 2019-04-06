@@ -7,7 +7,7 @@ import java.awt.Color;
 import java.awt.Point;
 import java.awt.Graphics;
 import java.awt.event.*;
-
+import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.FileReader;
 
@@ -27,12 +27,14 @@ public abstract class Engine {
 
 	private Point mousePosition = new Point(0, 0);
 
-	private float[][] perspectiveMatrix;
-	float[][] depthBuffer;
+	private double[][] perspectiveMatrix;
+	double[][] depthBuffer;
 	
 	protected ArrayList<Triangle> triangles = new ArrayList<>();
 	protected ArrayList<Light> lights = new ArrayList<>();
 
+	BufferedImage pixelBuffer;
+	
 	public Engine(int _screenWidth, int _screenHeight, String _screenTitle, int _fov, int _fps) {
 		this.screenWidth  = _screenWidth;
 		this.screenHeight = _screenHeight;
@@ -41,7 +43,6 @@ public abstract class Engine {
 		this.fps = _fps;
 
 		this.perspectiveMatrix = MatrixOperations.createPerspectiveMatrix(this.screenWidth, this.screenHeight, this.fov, 0.01f, 1000f);
-		this.depthBuffer = new float[this.screenWidth][this.screenHeight];
 		
 		this.panel = new Panel();
 		this.frame = new JFrame(this.screenTitle);
@@ -57,10 +58,12 @@ public abstract class Engine {
 		this.frame.addMouseMotionListener(new MouseMotionHandler());
 
 		this.frame.setVisible(true);
+		
+		this.panel.setSize(this.screenWidth, this.screenHeight);
 	}
 
 	protected void run() {
-		long defaultWaitTimeMs = (long) (1 / (float) this.fps * 1000);
+		long defaultWaitTimeMs = (long) (1 / (double) this.fps * 1000);
 
 		while (true) {
 			long beforeMs = System.currentTimeMillis();
@@ -99,16 +102,18 @@ public abstract class Engine {
 		this.screenWidth = _screenWidth;
 
 		this.frame.setSize(this.screenWidth, this.screenHeight);
+		this.panel.setSize(this.screenWidth, this.screenHeight);
+		
 		this.perspectiveMatrix = MatrixOperations.createPerspectiveMatrix(this.screenWidth, this.screenHeight, this.fov, 0.01f, 1000f);
-		this.depthBuffer = new float[this.screenWidth][this.screenHeight];
 	}
 
 	protected void setScreenHeight(int _screenHeight) {
 		this.screenHeight = _screenHeight;
 
 		this.frame.setSize(this.screenWidth, this.screenHeight);
+		this.panel.setSize(this.screenWidth, this.screenHeight);
+		
 		this.perspectiveMatrix = MatrixOperations.createPerspectiveMatrix(this.screenWidth, this.screenHeight, this.fov, 0.01f, 1000f);
-		this.depthBuffer = new float[this.screenWidth][this.screenHeight];
 	}
 
 	protected void setScreenTitle(String _screenTitle) {
@@ -139,9 +144,9 @@ public abstract class Engine {
 					case "v":						
 						int startIndex = elements.length == 4 ? 1 : 2;
 						
-						Vector vertex = new Vector((float) Double.parseDouble(elements[startIndex]),
-												   (float) Double.parseDouble(elements[startIndex+1]),
-									               (float) Double.parseDouble(elements[startIndex+2]));
+						Vector vertex = new Vector((double) Double.parseDouble(elements[startIndex]),
+												   (double) Double.parseDouble(elements[startIndex+1]),
+									               (double) Double.parseDouble(elements[startIndex+2]));
 
 						vertices.add(vertex);
 						break;
@@ -187,13 +192,13 @@ public abstract class Engine {
 	// Classes
 
 	private static class MatrixOperations {
-		static float[][] createPerspectiveMatrix(float _width, float _height, float _fov, float _zNear, float _zFar) {
-			float aspectRatio = _height / (float) _width;
-			float a = (float) (1.f / Math.tan(_fov * 0.5 * 180.f / 3.1415926));
+		static double[][] createPerspectiveMatrix(double _width, double _height, double _fov, double _zNear, double _zFar) {
+			double aspectRatio = _height / (double) _width;
+			double a = (double) (1.f / Math.tan(_fov * 0.5 * 180.f / 3.1415926));
 
 			if (a > 0) a = -a;
 
-			return new float[][] {
+			return new double[][] {
 					{aspectRatio * a, 0, 0, 0},
 					{0, a, 0, 0},
 					{0, 0, -_zFar / (_zFar - _zNear), 1},
@@ -201,17 +206,17 @@ public abstract class Engine {
 			};
 		}
 
-		static Vector multiplyMatrixByVector(float[][] _m, Vector _v) {
-			float x = _m[0][0] * _v.x + _m[1][0] * _v.y + _m[2][0] * _v.z + _m[3][0];
-			float y = _m[0][1] * _v.x + _m[1][1] * _v.y + _m[2][1] * _v.z + _m[3][1];
-			float z = _m[0][2] * _v.x + _m[1][2] * _v.y + _m[2][2] * _v.z + _m[3][2];
-			float w = _m[0][3] * _v.x + _m[1][3] * _v.y + _m[2][3] * _v.z + _m[3][3];
+		static Vector multiplyMatrixByVector(double[][] _m, Vector _v) {
+			double x = _m[0][0] * _v.x + _m[1][0] * _v.y + _m[2][0] * _v.z + _m[3][0];
+			double y = _m[0][1] * _v.x + _m[1][1] * _v.y + _m[2][1] * _v.z + _m[3][1];
+			double z = _m[0][2] * _v.x + _m[1][2] * _v.y + _m[2][2] * _v.z + _m[3][2];
+			double w = _m[0][3] * _v.x + _m[1][3] * _v.y + _m[2][3] * _v.z + _m[3][3];
 
 			return new Vector(x, y, z, w);
 		}
 
-		static float[][] getRotationXMatrix(float cosX, float sinX) {
-			return new float[][] {
+		static double[][] getRotationXMatrix(double cosX, double sinX) {
+			return new double[][] {
 				{1, 0,     0,    0},
 				{0, cosX,  sinX, 0},
 				{0, -sinX, cosX, 0},
@@ -219,8 +224,8 @@ public abstract class Engine {
 			};
 		}
 
-		static float[][] getRotationYMatrix(float cosY, float sinY) {
-			return new float[][] {
+		static double[][] getRotationYMatrix(double cosY, double sinY) {
+			return new double[][] {
 				{cosY, 0, -sinY, 0},
 				{0,    1, 0,     0},
 				{sinY, 0, cosY,  0},
@@ -228,8 +233,8 @@ public abstract class Engine {
 			};
 		}
 
-		static float[][] getRotationZMatrix(float cosZ, float sinZ) {
-			return new float[][] {
+		static double[][] getRotationZMatrix(double cosZ, double sinZ) {
+			return new double[][] {
 				{cosZ,  sinZ, 0, 0},
 				{-sinZ, cosZ, 0, 0},
 				{0,     0,    1, 0},
@@ -240,26 +245,26 @@ public abstract class Engine {
 	}
 
 	protected static class Vector {
-		public float x, y, z, w = 1;
+		public double x, y, z, w = 1;
 
 		public Vector() {this.x = 0; this.y = 0; this.z = 0; }
-		public Vector(float _x, float _y) { this.x = _x; this.y = _y; this.z = 0; }
-		public Vector(float _x, float _y, float _z) { this.x = _x; this.y = _y; this.z = _z; }
-		public Vector(float _x, float _y, float _z, float _w) { this.x = _x; this.y = _y; this.z = _z; this.w = _w; }
+		public Vector(double _x, double _y) { this.x = _x; this.y = _y; this.z = 0; }
+		public Vector(double _x, double _y, double _z) { this.x = _x; this.y = _y; this.z = _z; }
+		public Vector(double _x, double _y, double _z, double _w) { this.x = _x; this.y = _y; this.z = _z; this.w = _w; }
 
 		public Vector(Color _color) { this.x = _color.getRed(); this.y = _color.getGreen(); this.z = _color.getBlue(); }
 		
 		public Vector copy() { return new Vector(this.x, this.y, this.z); }
 
-		public void add(float _x, float _y, float _z) { this.x += _x; this.y += _y; this.z += _z; }
-		public void sub(float _x, float _y, float _z) { this.x -= _x; this.y -= _y; this.z -= _z; }
-		public void mul(float _x, float _y, float _z) { this.x *= _x; this.y *= _y; this.z *= _z; }
-		public void div(float _x, float _y, float _z) { this.x /= _x; this.y /= _y; this.z /= _z; }
+		public void add(double _x, double _y, double _z) { this.x += _x; this.y += _y; this.z += _z; }
+		public void sub(double _x, double _y, double _z) { this.x -= _x; this.y -= _y; this.z -= _z; }
+		public void mul(double _x, double _y, double _z) { this.x *= _x; this.y *= _y; this.z *= _z; }
+		public void div(double _x, double _y, double _z) { this.x /= _x; this.y /= _y; this.z /= _z; }
 
-		public void add(float _n) { this.add(_n, _n, _n); }
-		public void sub(float _n) { this.sub(_n, _n, _n); }
-		public void mul(float _n) { this.mul(_n, _n, _n); }
-		public void div(float _n) { this.div(_n, _n, _n); }
+		public void add(double _n) { this.add(_n, _n, _n); }
+		public void sub(double _n) { this.sub(_n, _n, _n); }
+		public void mul(double _n) { this.mul(_n, _n, _n); }
+		public void div(double _n) { this.div(_n, _n, _n); }
 
 		public void add(Vector _v) { this.add(_v.x, _v.y, _v.z); }
 		public void sub(Vector _v) { this.sub(_v.x, _v.y, _v.z); }
@@ -274,19 +279,19 @@ public abstract class Engine {
 			z = (z < 0) ? 0 : ( (z > 255) ? 255 : z );
 		}
 		
-		public float getLength() { return (float) Math.sqrt( this.x * this.x + this.y * this.y + this.z * this.z ); }
+		public double getLength() { return (double) Math.sqrt( this.x * this.x + this.y * this.y + this.z * this.z ); }
 		public void  normalize() { this.div(this.getLength()); }
 
 		public static Vector normalize(Vector _v) { Vector result = _v.copy(); result.normalize(); return result; }
 
-		public static float dotProduct(Vector _a, Vector _b) { return _a.x * _b.x + _a.y * _b.y + _a.z * _b.z; }
+		public static double dotProduct(Vector _a, Vector _b) { return _a.x * _b.x + _a.y * _b.y + _a.z * _b.z; }
 
 		//TBI - To Be Improved
 
-		public static Vector add(Vector _v, float _n) { Vector result = _v.copy(); result.add(_n); return result; }
-		public static Vector sub(Vector _v, float _n) { Vector result = _v.copy(); result.sub(_n); return result; }
-		public static Vector mul(Vector _v, float _n) { Vector result = _v.copy(); result.mul(_n); return result; }
-		public static Vector div(Vector _v, float _n) { Vector result = _v.copy(); result.div(_n); return result; }
+		public static Vector add(Vector _v, double _n) { Vector result = _v.copy(); result.add(_n); return result; }
+		public static Vector sub(Vector _v, double _n) { Vector result = _v.copy(); result.sub(_n); return result; }
+		public static Vector mul(Vector _v, double _n) { Vector result = _v.copy(); result.mul(_n); return result; }
+		public static Vector div(Vector _v, double _n) { Vector result = _v.copy(); result.div(_n); return result; }
 
 		public static Vector add(Vector _a, Vector _b) { Vector result = _a.copy(); result.add(_b); return result; }
 		public static Vector sub(Vector _a, Vector _b) { Vector result = _a.copy(); result.sub(_b); return result; }
@@ -320,9 +325,9 @@ public abstract class Engine {
 			Vector U = Vector.sub(vertices[1], vertices[0]);
 			Vector V = Vector.sub(vertices[2], vertices[0]);
 
-			float nX = U.y * V.z - U.z * V.y;
-			float nY = U.z * V.x - U.x * V.z;
-			float nZ = U.x * V.y - U.y * V.x;
+			double nX = U.y * V.z - U.z * V.y;
+			double nY = U.z * V.x - U.x * V.z;
+			double nZ = U.x * V.y - U.y * V.x;
 
 			return Vector.normalize(new Vector(nX, nY, nZ));
 		}
@@ -345,26 +350,26 @@ public abstract class Engine {
 		}
 		
 		@SuppressWarnings("unused")
-		private float constrain(float val, float _min, float _max) {
+		private double constrain(double val, double _min, double _max) {
 			if (val > _max) val = _max;
 			if (val < _min) val = _min;
 			
 			return val;
 		}
 		
-		void render(Graphics g, int _screenWidth, int _screenHeight) {
+		void render(BufferedImage pixelBuffer, int _screenWidth, int _screenHeight) {
 			// https://codeplea.com/triangular-interpolation
 			
 			// Step 1 : calculate weights
 			
-			float denominator = (this.vertices[1].y - this.vertices[2].y) * (this.vertices[0].x - this.vertices[2].x) + (this.vertices[2].x - this.vertices[1].x) * (this.vertices[0].y - this.vertices[2].y);
+			double denominator = (this.vertices[1].y - this.vertices[2].y) * (this.vertices[0].x - this.vertices[2].x) + (this.vertices[2].x - this.vertices[1].x) * (this.vertices[0].y - this.vertices[2].y);
 			
 			// Step 1.5 : precalculate values
 			
-			float preCalc1 = (this.vertices[1].y - this.vertices[2].y);
-			float preCalc2 = (this.vertices[2].x - this.vertices[1].x);
-			float preCalc3 = (this.vertices[2].y - this.vertices[0].y);
-			float preCalc4 = (this.vertices[0].x - this.vertices[2].x);
+			double preCalc1 = (this.vertices[1].y - this.vertices[2].y);
+			double preCalc2 = (this.vertices[2].x - this.vertices[1].x);
+			double preCalc3 = (this.vertices[2].y - this.vertices[0].y);
+			double preCalc4 = (this.vertices[0].x - this.vertices[2].x);
 			
 			Vector t0 = vertices[0].copy();
 			Vector t1 = vertices[1].copy();
@@ -387,8 +392,8 @@ public abstract class Engine {
 
 				int segment_height = (int) (second_half ? t2.y - t1.y : t1.y - t0.y);
 
-				float alpha = i / (float) total_height;
-				float beta  = (i - (second_half ? t1.y - t0.y : 0)) / segment_height;
+				double alpha = i / (double) total_height;
+				double beta  = (i - (second_half ? t1.y - t0.y : 0)) / segment_height;
 
 				Vector A = Vector.add( t0, Vector.mul( Vector.sub(t2, t0) , alpha ) );
 				Vector B = second_half ?  Vector.add( t1, Vector.mul( Vector.sub(t2, t1) , beta ) ) : Vector.add( t0, Vector.mul( Vector.sub(t1, t0), beta ));
@@ -406,10 +411,10 @@ public abstract class Engine {
 					if (y >= 0 && y < _screenHeight) {
 						// https://codeplea.com/triangular-interpolation
 						
-						float preCalc5 = (x - this.vertices[2].x);
-						float preCalc6 = (y - this.vertices[2].y);
+						double preCalc5 = (x - this.vertices[2].x);
+						double preCalc6 = (y - this.vertices[2].y);
 						
-						float[] weights = new float[] {
+						double[] weights = new double[] {
 							(preCalc1 * preCalc5 + preCalc2 * preCalc6) / denominator, 
 							(preCalc3 * preCalc5 + preCalc4 * preCalc6) / denominator, 
 							0, 
@@ -417,13 +422,13 @@ public abstract class Engine {
 						
 						weights[2] = 1 - weights[0] - weights[1];
 						
-						float weightSum = weights[0] + weights[1] + weights[2];
+						double weightSum = weights[0] + weights[1] + weights[2];
 						
 						// Pixel Color
 						Vector color = new Vector(0, 0, 0);
 						
 						// Pixel Depth (w)
-						float w = 0;
+						double w = 0;
 						
 						// For every vertex
 						for (int c = 0; c < 3; c++) {
@@ -442,11 +447,11 @@ public abstract class Engine {
 							// Limit values between 0 and 255
 							color.constrain();
 							
-							g.setColor(color.getColor());
-							g.fillRect(x, y, 1, 1);
+							pixelBuffer.setRGB(x, y, color.getColor().getRGB());
 						}
 					} else {
 						doBreak = true;
+						break;
 					}
 				}
 				
@@ -459,9 +464,9 @@ public abstract class Engine {
 		public Vector position;
 		public Vector color;
 
-		public float intensity;
+		public double intensity;
 
-		public Light(Vector _position, Vector _color, float _intensity) {
+		public Light(Vector _position, Vector _color, double _intensity) {
 			this.position = _position;
 			this.color = _color;
 			this.intensity = _intensity;
@@ -557,11 +562,11 @@ public abstract class Engine {
 						// No Need To Translate The Light's position and the triangle's position because it would cancel out
 						Vector vertexToLight = Vector.sub(light.position, _rotatedVertices[i]);
 	
-						float distance = (float) vertexToLight.getLength();
+						double distance = (double) vertexToLight.getLength();
 	
 						vertexToLight.normalize();
 	
-						float dotProductTriangleAndLight = Vector.dotProduct(vertexToLight, _surfaceNormal);
+						double dotProductTriangleAndLight = Vector.dotProduct(vertexToLight, _surfaceNormal);
 						
 						if (dotProductTriangleAndLight > 0f) {
 							dotProductTriangleAndLight = Math.abs(dotProductTriangleAndLight);
@@ -569,7 +574,7 @@ public abstract class Engine {
 							dotProductTriangleAndLight = 0f;
 						}
 						
-						float brightness = (dotProductTriangleAndLight * light.intensity) / (distance * distance);
+						double brightness = (dotProductTriangleAndLight * light.intensity) / (distance * distance);
 						
 						vertexColor.add(Vector.mul(Vector.div(light.color, 255), brightness));		
 				}
@@ -589,26 +594,30 @@ public abstract class Engine {
 		}
 
 		public void paintComponent(Graphics g) {
-			g.setColor(Color.RED);
-			g.fillRect(0, 0, screenWidth, screenHeight);
-
-			depthBuffer = new float[this.getWidth()][this.getHeight()];
+			pixelBuffer = new BufferedImage(screenWidth, screenHeight, BufferedImage.TYPE_INT_RGB);
+			
+			Graphics gc = pixelBuffer.getGraphics(); 
+			
+			gc.setColor(Color.RED);
+			gc.fillRect(0, 0, screenWidth, screenHeight);
+			
+			depthBuffer = new double[screenWidth][screenHeight];
 			
 			try {
 				ArrayList<TriangleRender2D> trianglesToRender = new ArrayList<>();
 
-				float[][] cameraRotationXMatrix = MatrixOperations.getRotationXMatrix((float) Math.cos(-Camera.rotation.x), (float) Math.sin(-Camera.rotation.x));
-				float[][] cameraRotationYMatrix = MatrixOperations.getRotationYMatrix((float) Math.cos(-Camera.rotation.y), (float) Math.sin(-Camera.rotation.y));
-				float[][] cameraRotationZMatrix = MatrixOperations.getRotationZMatrix((float) Math.cos(-Camera.rotation.z), (float) Math.sin(-Camera.rotation.z));
+				double[][] cameraRotationXMatrix = MatrixOperations.getRotationXMatrix((double) Math.cos(-Camera.rotation.x), (double) Math.sin(-Camera.rotation.x));
+				double[][] cameraRotationYMatrix = MatrixOperations.getRotationYMatrix((double) Math.cos(-Camera.rotation.y), (double) Math.sin(-Camera.rotation.y));
+				double[][] cameraRotationZMatrix = MatrixOperations.getRotationZMatrix((double) Math.cos(-Camera.rotation.z), (double) Math.sin(-Camera.rotation.z));
 
 				for (Triangle triangle : triangles) {
 					Vector[] rotatedVertices = new Vector[3];
 
 					// Rotation Matrices : https://www.siggraph.org/education/materials/HyperGraph/modeling/mod_tran/3drota.htm#Z
 
-					float[][] triangleRotationXMatrix = MatrixOperations.getRotationXMatrix((float) Math.cos(triangle.rotation.x), (float) Math.sin(triangle.rotation.x));
-					float[][] triangleRotationYMatrix = MatrixOperations.getRotationYMatrix((float) Math.cos(triangle.rotation.y), (float) Math.sin(triangle.rotation.y));
-					float[][] triangleRotationZMatrix = MatrixOperations.getRotationZMatrix((float) Math.cos(triangle.rotation.z), (float) Math.sin(triangle.rotation.z));
+					double[][] triangleRotationXMatrix = MatrixOperations.getRotationXMatrix((double) Math.cos(triangle.rotation.x), (double) Math.sin(triangle.rotation.x));
+					double[][] triangleRotationYMatrix = MatrixOperations.getRotationYMatrix((double) Math.cos(triangle.rotation.y), (double) Math.sin(triangle.rotation.y));
+					double[][] triangleRotationZMatrix = MatrixOperations.getRotationZMatrix((double) Math.cos(triangle.rotation.z), (double) Math.sin(triangle.rotation.z));
 
 					// Rotate each Vertex
 					for (int i = 0; i < 3; i++) {
@@ -654,8 +663,8 @@ public abstract class Engine {
 							}
 
 							// World To Screen (between -1 and 1 to between 0 and 255)
-							manipulatedVertices[i].x = ((manipulatedVertices[i].x - 1f) / -2f) * this.getWidth();
-							manipulatedVertices[i].y = ((manipulatedVertices[i].y + 1f) /  2f) * this.getHeight();
+							manipulatedVertices[i].x = ((manipulatedVertices[i].x - 1f) / -2f) * screenWidth;
+							manipulatedVertices[i].y = ((manipulatedVertices[i].y + 1f) /  2f) * screenHeight;
 						}
 
 						// If The Triangle Is In Front Of The Camera
@@ -672,11 +681,13 @@ public abstract class Engine {
 				// Render Triangles
 				for (TriangleRender2D triangle : trianglesToRender) {
 					// Render The Triangle
-					triangle.render(g, this.getWidth(), this.getHeight());
+					triangle.render(pixelBuffer, screenWidth, screenHeight);
 				}
 			} catch (java.util.ConcurrentModificationException e) {
 				e.printStackTrace();
 			}
+			
+			g.drawImage(pixelBuffer, 0, 0, screenWidth, screenHeight, null);
 		}
 	}
 }

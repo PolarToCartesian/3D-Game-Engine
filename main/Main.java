@@ -6,7 +6,7 @@ public class Main extends Engine {
 
 	public Main() {
 		super(1920, 1080, "Engine Test App", 90, 30);
-		loadModel("res/teapot.obj", false);
+		loadModel("res/dragon.obj", false);
 		
 		lights.add(new Light(Camera.position, new Vector(255, 255, 255), 5f));
 		run();
