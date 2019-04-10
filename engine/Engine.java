@@ -6,8 +6,13 @@ import javax.swing.JPanel;
 import java.awt.Color;
 import java.awt.Point;
 import java.awt.Graphics;
-import java.awt.event.*;
 import java.awt.image.BufferedImage;
+import java.awt.event.MouseMotionListener;
+import java.awt.event.KeyListener;
+import java.awt.event.MouseListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 
@@ -19,7 +24,7 @@ public abstract class Engine {
 	private int fov;
 	private int fps;
 	private String screenTitle;
-
+	
 	private JFrame frame;
 	private Panel  panel;
 
@@ -30,9 +35,12 @@ public abstract class Engine {
 	private double[][] perspectiveMatrix;
 	double[][] depthBuffer;
 	
-	protected ArrayList<Triangle> triangles = new ArrayList<>();
+	ArrayList<Triangle> triangles = new ArrayList<>();
+	
 	protected ArrayList<Light> lights = new ArrayList<>();
 
+	protected Color backgroundColor = Color.BLACK;
+	
 	BufferedImage pixelBuffer;
 	
 	public Engine(int _screenWidth, int _screenHeight, String _screenTitle, int _fov, int _fps) {
@@ -55,16 +63,15 @@ public abstract class Engine {
 		this.frame.setFocusable(true);
 		this.frame.add(panel);
 		this.frame.addMouseListener(new MouseListenerHandler());
-		this.frame.addMouseMotionListener(new MouseMotionHandler());
-
-		this.frame.setVisible(true);
-		
+		this.frame.addMouseMotionListener(new MouseMotionHandler());		
 		this.panel.setSize(this.screenWidth, this.screenHeight);
 	}
 
-	protected void run() {
+	protected final void run() {
+		this.frame.setVisible(true);
+		
 		long defaultWaitTimeMs = (long) (1 / (double) this.fps * 1000);
-
+		
 		while (true) {
 			long beforeMs = System.currentTimeMillis();
 
@@ -87,9 +94,10 @@ public abstract class Engine {
 				}
 			}
 		}
+		
 	}
 
-	private void cleanUp() {
+	private final void cleanUp() {
 		// Prevent Overflow
 		Camera.rotation.x %= (2 * Math.PI);
 		Camera.rotation.y %= (2 * Math.PI);
@@ -98,7 +106,7 @@ public abstract class Engine {
 
 	// Setters
 
-	protected void setScreenWidth(int _screenWidth) {
+	protected final void setScreenWidth(int _screenWidth) {
 		this.screenWidth = _screenWidth;
 
 		this.frame.setSize(this.screenWidth, this.screenHeight);
@@ -107,7 +115,7 @@ public abstract class Engine {
 		this.perspectiveMatrix = MatrixOperations.createPerspectiveMatrix(this.screenWidth, this.screenHeight, this.fov, 0.01f, 1000f);
 	}
 
-	protected void setScreenHeight(int _screenHeight) {
+	protected final void setScreenHeight(int _screenHeight) {
 		this.screenHeight = _screenHeight;
 
 		this.frame.setSize(this.screenWidth, this.screenHeight);
@@ -116,7 +124,7 @@ public abstract class Engine {
 		this.perspectiveMatrix = MatrixOperations.createPerspectiveMatrix(this.screenWidth, this.screenHeight, this.fov, 0.01f, 1000f);
 	}
 
-	protected void setScreenTitle(String _screenTitle) {
+	protected final void setScreenTitle(String _screenTitle) {
 		this.screenTitle = _screenTitle;
 
 		this.frame.setTitle(this.screenTitle);
@@ -124,15 +132,43 @@ public abstract class Engine {
 
 	// Getters
 
-	protected int getScreenWidth()    { return this.screenWidth;  }
-	protected int getScreenHeight()   { return this.screenHeight; }
-	protected String getScreenTitle() { return this.screenTitle;  }
+	protected final int getScreenWidth()    { return this.screenWidth;  }
+	protected final int getScreenHeight()   { return this.screenHeight; }
+	protected final String getScreenTitle() { return this.screenTitle;  }
 
-	protected boolean isMousePressed() { return this.mousePressed; }
+	protected final boolean isMousePressed() { return this.mousePressed; }
 
-	protected Point getMousePosition() { return this.mousePosition; }
+	protected final Point getMousePosition() { return this.mousePosition; }
+	
+	protected final int addTriangle(Triangle _triangle) {
+		triangles.add(_triangle);
+		
+		return triangles.size() - 1;
+	}
+	
+	protected final int[] addTriangles(Triangle[] _triangles) {
+		int[] indices = new int[_triangles.length];
+		
+		for (int i = 0; i < _triangles.length; i++) {			
+			indices[i] = addTriangle(_triangles[i]);
+		}
+				
+		return indices;
+	}
+	
+	protected final void removeTriangle(int _index) {
+		triangles.set(_index, null);
+	}
+	
+	protected final void setTriangle(int _index, Triangle _triangle) {
+		triangles.set(_index, _triangle);
+	}
+	
+	protected final Triangle getTriangle(int _index) {
+		return triangles.get(_index);
+	}
 
-	protected void loadModel(String fileLocation, boolean randomColors) {
+	protected final void loadModel(String fileLocation, boolean randomColors) {
 		try (BufferedReader br = new BufferedReader(new FileReader(fileLocation))) {
 			String line;
 			ArrayList<Vector> vertices = new ArrayList<Vector>();
@@ -191,7 +227,7 @@ public abstract class Engine {
 
 	// Classes
 
-	private static class MatrixOperations {
+	private final static class MatrixOperations {
 		static double[][] createPerspectiveMatrix(double _width, double _height, double _fov, double _zNear, double _zFar) {
 			double aspectRatio = _height / (double) _width;
 			double a = (double) (1.f / Math.tan(_fov * 0.5 * 180.f / 3.1415926));
@@ -199,10 +235,10 @@ public abstract class Engine {
 			if (a > 0) a = -a;
 
 			return new double[][] {
-					{aspectRatio * a, 0, 0, 0},
-					{0, a, 0, 0},
-					{0, 0, -_zFar / (_zFar - _zNear), 1},
-					{0, 0, (-_zFar * _zNear) / (_zFar - _zNear), 0}
+					{aspectRatio * a, 0, 0,                                    0},
+					{0,               a, 0,                                    0},
+					{0,               0, -_zFar / (_zFar - _zNear),            1},
+					{0,               0, (-_zFar * _zNear) / (_zFar - _zNear), 0}
 			};
 		}
 
@@ -244,7 +280,7 @@ public abstract class Engine {
 
 	}
 
-	protected static class Vector {
+	protected static final class Vector {
 		public double x, y, z, w = 1;
 
 		public Vector() {this.x = 0; this.y = 0; this.z = 0; }
@@ -598,7 +634,7 @@ public abstract class Engine {
 			
 			Graphics gc = pixelBuffer.getGraphics(); 
 			
-			gc.setColor(Color.RED);
+			gc.setColor(backgroundColor);
 			gc.fillRect(0, 0, screenWidth, screenHeight);
 			
 			depthBuffer = new double[screenWidth][screenHeight];
@@ -611,6 +647,9 @@ public abstract class Engine {
 				double[][] cameraRotationZMatrix = MatrixOperations.getRotationZMatrix((double) Math.cos(-Camera.rotation.z), (double) Math.sin(-Camera.rotation.z));
 
 				for (Triangle triangle : triangles) {
+					// If the triangle doesn't exist anymore, render the next one
+					if (triangle == null) continue;
+					
 					Vector[] rotatedVertices = new Vector[3];
 
 					// Rotation Matrices : https://www.siggraph.org/education/materials/HyperGraph/modeling/mod_tran/3drota.htm#Z
@@ -677,12 +716,12 @@ public abstract class Engine {
 						}
 					}
 				}
-
+				
 				// Render Triangles
 				for (TriangleRender2D triangle : trianglesToRender) {
 					// Render The Triangle
 					triangle.render(pixelBuffer, screenWidth, screenHeight);
-				}
+				}				
 			} catch (java.util.ConcurrentModificationException e) {
 				e.printStackTrace();
 			}
