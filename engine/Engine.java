@@ -1,5 +1,6 @@
 package engine;
 
+import javax.imageio.ImageIO;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
@@ -14,10 +15,13 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
+import java.io.IOException;
 
 import java.util.ArrayList;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.ConcurrentModificationException;
 
 public abstract class Engine {
 	private int screenWidth, screenHeight;
@@ -33,15 +37,15 @@ public abstract class Engine {
 	private Point mousePosition = new Point(0, 0);
 
 	private double[][] perspectiveMatrix;
-	double[][] depthBuffer;
+	private double[][] depthBuffer;
 	
-	ArrayList<Triangle> triangles = new ArrayList<>();
-	
-	protected ArrayList<Light> lights = new ArrayList<>();
+	private ArrayList<Triangle> triangles = new ArrayList<Triangle>();
+	private ArrayList<Light>    lights    = new ArrayList<Light>();
+	private ArrayList<Texture>  textures  = new ArrayList<Texture>();
 
-	protected Color backgroundColor = Color.BLACK;
+	private Color backgroundColor = Color.BLACK;
 	
-	BufferedImage pixelBuffer;
+	private BufferedImage pixelBuffer;
 	
 	public Engine(int _screenWidth, int _screenHeight, String _screenTitle, int _fov, int _fps) {
 		this.screenWidth  = _screenWidth;
@@ -168,6 +172,71 @@ public abstract class Engine {
 		return triangles.get(_index);
 	}
 
+	
+	protected final int addLight(Light _light) {
+		lights.add(_light);
+		
+		return lights.size() - 1;
+	}
+	
+	protected final int[] addLights(Light[] _lights) {
+		int[] indices = new int[_lights.length];
+		
+		for (int i = 0; i < _lights.length; i++) {			
+			indices[i] = addLight(_lights[i]);
+		}
+				
+		return indices;
+	}
+	
+	protected final void removeLight(int _index) {
+		lights.set(_index, null);
+	}
+	
+	protected final void setLight(int _index, Light _light) {
+		lights.set(_index, _light);
+	}
+	
+	protected final Light getLight(int _index) {
+		return lights.get(_index);
+	}
+	
+	protected final int addTexture(Texture _texture) {
+		textures.add(_texture);
+		
+		return textures.size() - 1;
+	}
+	
+	protected final int[] addTextures(Texture[] _texture) {
+		int[] indices = new int[_texture.length];
+		
+		for (int i = 0; i < _texture.length; i++) {			
+			indices[i] = addTexture(_texture[i]);
+		}
+				
+		return indices;
+	}
+	
+	protected final void removeTexture(int _index) {
+		textures.set(_index, null);
+	}
+	
+	protected final void setTexture(int _index, Texture _texture) {
+		textures.set(_index, _texture);
+	}
+	
+	protected final Texture getTexture(int _index) {
+		return textures.get(_index);
+	}
+	
+	protected final void setBackgroundColor(Color _color) {
+		this.backgroundColor = _color;
+	}
+	
+	protected final void setBackgroundColor(Vector _color) {
+		this.backgroundColor = Vector.getColor(_color);
+	}
+	
 	protected final void loadModel(String fileLocation, boolean randomColors) {
 		try (BufferedReader br = new BufferedReader(new FileReader(fileLocation))) {
 			String line;
@@ -209,9 +278,9 @@ public abstract class Engine {
 				}
 			}
 		} catch (java.io.FileNotFoundException e) {
-			System.out.println("FileNotFoundException");
+			e.printStackTrace();
 		} catch (java.io.IOException e) {
-			System.out.println("IOException");
+			e.printStackTrace();
 		}
 
 		System.out.println("Loaded " + triangles.size() + " triangles (" + triangles.size() * 3 + " vertices)");
@@ -220,9 +289,13 @@ public abstract class Engine {
 	// To Be Overridden
 
 	protected void update(long deltaTime) {}
+	
 	protected boolean onKeyDown(int keyCode) { return false; } // Return True if input is used, and false if it is not.
+	
 	protected void onMouseClick() {}
+	
 	protected void onMousePress() {}
+	
 	protected void onMouseRelease() {}
 
 	// Classes
@@ -348,11 +421,23 @@ public abstract class Engine {
 		public Vector rotation;
 		public Vector rotationMidPoint = new Vector(0, 0, 0);
 		public Vector[] colors;
+		
+		public boolean doUseTexture = false;
+		public int textureID = -1;
 
 		public Triangle(Vector[] _vertices, Vector[] _colors) {
 			this.vertices = _vertices;
 			this.colors   = _colors;
 			this.rotation = new Vector(0, 0, 0);
+		}
+		
+		public Triangle(Vector[] _vertices, Vector[] _colors,int _textureID, boolean _doUseTexture) {
+			this.vertices = _vertices;
+			this.colors   = _colors;
+			this.rotation = new Vector(0, 0, 0);
+			
+			this.textureID = _textureID;
+			this.doUseTexture = _doUseTexture;
 		}
 
 		public static Vector getSurfaceNormal(Vector[] vertices) {
@@ -374,7 +459,10 @@ public abstract class Engine {
 		Vector[] vertices;
 		Vector[] colors = new Vector[3];
 
-		TriangleRender2D(Vector[] _vertices, Vector[] _colors) {
+		public boolean doUseTexture = false;
+		public int textureID = -1;
+		
+		TriangleRender2D(Vector[] _vertices, Vector[] _colors, boolean _doUseTexture, int _textureID) {
 			this.vertices = _vertices;
 			
 			for (int i = 0; i < 3; i++) { 
@@ -382,7 +470,10 @@ public abstract class Engine {
 				this.vertices[i].y = (int) this.vertices[i].y; 											
 			}
 			
-			this.colors = _colors;						
+			this.colors = _colors;			
+			
+			this.doUseTexture =_doUseTexture;
+			this.textureID = _textureID;
 		}
 		
 		@SuppressWarnings("unused")
@@ -460,29 +551,49 @@ public abstract class Engine {
 						
 						double weightSum = weights[0] + weights[1] + weights[2];
 						
-						// Pixel Color
-						Vector color = new Vector(0, 0, 0);
-						
 						// Pixel Depth (w)
 						double w = 0;
 						
 						// For every vertex
 						for (int c = 0; c < 3; c++) {
-							color.add(Vector.mul(this.colors[c], weights[c]));
 							w += vertices[c].w * weights[c];
 						}
 						
 						w /= weightSum;
 						
+						// Pixel Color
+						Vector color = new Vector(0, 0, 0);
+						
 						// If the pixel is in front
 						if (w < depthBuffer[x][y] || depthBuffer[x][y] == 0) {
 							depthBuffer[x][y] = w;
 							
-							color.div(weightSum);
+							if (doUseTexture && textureID >= 0) {
+								int left = (int) t0.x, right = (int) t0.x, top = (int) t0.y, bottom = (int) t0.y;
+								
+								if (t1.x < left)  { left  = (int) t1.x; } if (t2.x < left)  { left = (int) t2.x; }
+								if (t1.x > right) { right = (int) t1.x; } if (t2.x > right) { left = (int) t2.x; }
+
+								if (t1.y < top)    { top    = (int) t1.y; } if (t2.y < top)    { top    = (int) t2.y; }
+								if (t1.y > bottom) { bottom = (int) t1.y; } if (t2.y > bottom) { bottom = (int) t2.y; }
+								
+								int u = (int) (((x - left) / (float) (right - left)) * (textures.get(textureID).textureImage.getWidth() - 1));	
+								int v = (int) (((y - top)  / (float) (bottom - top)) * (textures.get(textureID).textureImage.getHeight() - 1));
+								
+								color = textures.get(textureID).sample(u, v);
+							} else { // Triangulate the pixel color (pun intended)
+								// For every vertex
+								for (int c = 0; c < 3; c++) {
+									color.add(Vector.mul(this.colors[c], weights[c]));
+								}
+								
+								color.div(weightSum);
+							}
 							
 							// Limit values between 0 and 255
 							color.constrain();
 							
+							// Set the pixel to the right color
 							pixelBuffer.setRGB(x, y, color.getColor().getRGB());
 						}
 					} else {
@@ -508,6 +619,26 @@ public abstract class Engine {
 			this.intensity = _intensity;
 		}
 	}
+	
+	public static class Texture {
+		public BufferedImage textureImage;
+		
+		public Texture(String _path) {
+			try {
+				this.textureImage = ImageIO.read(new File(_path));
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		public Texture(BufferedImage _textureImage) {
+			this.textureImage = _textureImage;
+		}
+		
+		public Vector sample(int _u, int _v) {
+			return new Vector(new Color(textureImage.getRGB(_u, _v)));
+		}
+	};
 
 	private class KeyBoardListener implements KeyListener {
 		public void keyTyped(KeyEvent e) {}
@@ -574,7 +705,7 @@ public abstract class Engine {
 		public void mouseExited(MouseEvent e)   {}
 		public void mouseReleased(MouseEvent e) { onMouseRelease(); mousePressed = false; }
 	}
-
+	
 	private class Panel extends JPanel {
 		private static final long serialVersionUID = 1L;
 
@@ -712,7 +843,7 @@ public abstract class Engine {
 							Vector[] colors = getColorsWIllumination(rotatedVertices, surfaceNormal, triangle.colors);
 														
 							// Add Triangle to the render queue
-							trianglesToRender.add(new TriangleRender2D(manipulatedVertices, colors));
+							trianglesToRender.add(new TriangleRender2D(manipulatedVertices, colors, triangle.doUseTexture, triangle.textureID));
 						}
 					}
 				}
@@ -722,7 +853,7 @@ public abstract class Engine {
 					// Render The Triangle
 					triangle.render(pixelBuffer, screenWidth, screenHeight);
 				}				
-			} catch (java.util.ConcurrentModificationException e) {
+			} catch (ConcurrentModificationException e) {
 				e.printStackTrace();
 			}
 			

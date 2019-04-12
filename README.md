@@ -24,6 +24,7 @@ This project's goal is to build a simple 3D java rendering engine from stratch.
   + *Each of the triangle's vertices can have different colors (with smooth transitions)*
   + *Model Loader*
   + *Depth Buffer*
+  + *Textures (Beta)*
 
 ## Thanks to these people for their algorithms and helpful resources
 

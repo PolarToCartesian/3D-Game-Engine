@@ -8,11 +8,40 @@ public class Main extends Engine {
 	
 	public Main() {
 		super(1920, 1080, "Engine Test App", 90, 30);
-		loadModel("res/teapot.obj", false);
 		
-		this.backgroundColor = Color.BLUE;
+		this.setBackgroundColor(Color.BLUE);
+		//this.loadModel("res/teapot.obj", true);
+		this.addTexture(new Texture("res/brick.png"));
+		this.addTriangle(new Triangle(
+				new Vector[] {
+						new Vector(1,  1, 0),
+						new Vector(1, -1, 0),
+						new Vector(-1, 1, 0),
+				},
+				new Vector[] {
+						new Vector(255, 0, 0),
+						new Vector(255, 0, 0),
+						new Vector(255, 0, 0),
+				},
+				0,
+				true
+		));
+		this.addTriangle(new Triangle(
+				new Vector[] {
+						new Vector(1,  -1, 0),
+						new Vector(-1, -1, 0),
+						new Vector(-1,  1, 0),
+				},
+				new Vector[] {
+						new Vector(255, 0, 0),
+						new Vector(255, 0, 0),
+						new Vector(255, 0, 0),
+				},
+				0,
+				true
+		));
+		this.addLight(new Light(Camera.position, new Vector(255, 255, 255), 5f));
 		
-		lights.add(new Light(Camera.position, new Vector(255, 255, 255), 5f));
 		run();	
 	}
 
