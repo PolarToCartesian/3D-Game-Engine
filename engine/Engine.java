@@ -273,7 +273,7 @@ public abstract class Engine {
 							}
 						}
 
-						triangles.add(new Triangle(positions, colors));
+						triangles.add(new Triangle(positions, colors, -1, false));
 						break;
 				}
 			}
@@ -487,7 +487,7 @@ public abstract class Engine {
 		void render(BufferedImage pixelBuffer, int _screenWidth, int _screenHeight) {
 			// https://codeplea.com/triangular-interpolation
 			
-			// Step 1 : calculate weights
+			// Step 1 : calculate denominator
 			
 			double denominator = (this.vertices[1].y - this.vertices[2].y) * (this.vertices[0].x - this.vertices[2].x) + (this.vertices[2].x - this.vertices[1].x) * (this.vertices[0].y - this.vertices[2].y);
 			
@@ -498,32 +498,40 @@ public abstract class Engine {
 			double preCalc3 = (this.vertices[2].y - this.vertices[0].y);
 			double preCalc4 = (this.vertices[0].x - this.vertices[2].x);
 			
-			Vector t0 = vertices[0].copy();
-			Vector t1 = vertices[1].copy();
-			Vector t2 = vertices[2].copy();
+			// left, right, top and bottom most points of triangle (for texturing)
+			
+			int left = (int) this.vertices[0].x, right = (int) this.vertices[0].x, top = (int) this.vertices[0].y, bottom = (int) this.vertices[0].y;
+			
+			if (this.vertices[1].x < left)  { left  = (int) this.vertices[1].x; } if (this.vertices[2].x < left)  { left = (int) this.vertices[2].x; }
+			if (this.vertices[1].x > right) { right = (int) this.vertices[1].x; } if (this.vertices[2].x > right) { left = (int) this.vertices[2].x; }
 
+			if (this.vertices[1].y < top)    { top    = (int) this.vertices[1].y; } if (this.vertices[2].y < top)    { top    = (int) this.vertices[2].y; }
+			if (this.vertices[1].y > bottom) { bottom = (int) this.vertices[1].y; } if (this.vertices[2].y > bottom) { bottom = (int) this.vertices[2].y; }
+			
+			int deltaX = right - left, deltaY = bottom - top;
+			
 			// https://github.com/ssloy/tinyrenderer/wiki/Lesson-2:-Triangle-rasterization-and-back-face-culling
 			
-			if (t0.y == t1.y && t0.y == t2.y) return;
+			if (vertices[0].y == vertices[1].y && vertices[0].y == vertices[2].y) return;
 
-			if (t0.y > t1.y) { Vector temp = t0.copy(); t0 = t1.copy(); t1 = temp.copy(); }
-			if (t0.y > t2.y) { Vector temp = t0.copy(); t0 = t2.copy(); t2 = temp.copy(); }
-			if (t1.y > t2.y) { Vector temp = t2.copy(); t2 = t1.copy(); t1 = temp.copy(); }
-
-			int total_height = (int) (t2.y - t0.y);
+			if (vertices[0].y > vertices[1].y) { Vector temp = vertices[0].copy(); vertices[0] = vertices[1].copy(); vertices[1] = temp.copy(); }
+			if (vertices[0].y > vertices[2].y) { Vector temp = vertices[0].copy(); vertices[0] = vertices[2].copy(); vertices[2] = temp.copy(); }
+			if (vertices[1].y > vertices[2].y) { Vector temp = vertices[2].copy(); vertices[2] = vertices[1].copy(); vertices[1] = temp.copy(); }
+			
+			int total_height = (int) (vertices[2].y - vertices[0].y);
 
 			if (total_height >= _screenHeight) { total_height = _screenHeight - 1; }
 			
 			for (int i = 0; i < total_height; i++) {
-				boolean second_half = i > t1.y - t0.y || t1.y == t0.y;
+				boolean second_half = i > vertices[1].y - vertices[0].y || vertices[1].y == vertices[0].y;
 
-				int segment_height = (int) (second_half ? t2.y - t1.y : t1.y - t0.y);
+				int segment_height = (int) (second_half ? vertices[2].y - vertices[1].y : vertices[1].y - vertices[0].y);
 
 				double alpha = i / (double) total_height;
-				double beta  = (i - (second_half ? t1.y - t0.y : 0)) / segment_height;
+				double beta  = (i - (second_half ? vertices[1].y - vertices[0].y : 0)) / segment_height;
 
-				Vector A = Vector.add( t0, Vector.mul( Vector.sub(t2, t0) , alpha ) );
-				Vector B = second_half ?  Vector.add( t1, Vector.mul( Vector.sub(t2, t1) , beta ) ) : Vector.add( t0, Vector.mul( Vector.sub(t1, t0), beta ));
+				Vector A = Vector.add( vertices[0], Vector.mul( Vector.sub(vertices[2], vertices[0]) , alpha ) );
+				Vector B = second_half ?  Vector.add( vertices[1], Vector.mul( Vector.sub(vertices[2], vertices[1]) , beta ) ) : Vector.add( vertices[0], Vector.mul( Vector.sub(vertices[1], vertices[0]), beta ));
 
 				if (A.x > B.x) { Vector temp = A.copy(); A = B.copy(); B = temp.copy(); }
 
@@ -533,7 +541,7 @@ public abstract class Engine {
 				boolean doBreak = false;
 				
 				for (int x = xStart; x <= xEnd; x++) {
-					int y = (int) (t0.y + i);
+					int y = (int) (vertices[0].y + i);
 
 					if (y >= 0 && y < _screenHeight) {
 						// https://codeplea.com/triangular-interpolation
@@ -541,25 +549,25 @@ public abstract class Engine {
 						double preCalc5 = (x - this.vertices[2].x);
 						double preCalc6 = (y - this.vertices[2].y);
 						
-						double[] weights = new double[] {
+						double[] VertexPositionWeights = new double[] {
 							(preCalc1 * preCalc5 + preCalc2 * preCalc6) / denominator, 
 							(preCalc3 * preCalc5 + preCalc4 * preCalc6) / denominator, 
 							0, 
 						};
 						
-						weights[2] = 1 - weights[0] - weights[1];
+						VertexPositionWeights[2] = 1 - VertexPositionWeights[0] - VertexPositionWeights[1];
 						
-						double weightSum = weights[0] + weights[1] + weights[2];
+						double VertexPositionWeightSum = VertexPositionWeights[0] + VertexPositionWeights[1] + VertexPositionWeights[2];
 						
 						// Pixel Depth (w)
 						double w = 0;
 						
 						// For every vertex
 						for (int c = 0; c < 3; c++) {
-							w += vertices[c].w * weights[c];
+							w += vertices[c].w * VertexPositionWeights[c];
 						}
 						
-						w /= weightSum;
+						w /= VertexPositionWeightSum;
 						
 						// Pixel Color
 						Vector color = new Vector(0, 0, 0);
@@ -569,25 +577,19 @@ public abstract class Engine {
 							depthBuffer[x][y] = w;
 							
 							if (doUseTexture && textureID >= 0) {
-								int left = (int) t0.x, right = (int) t0.x, top = (int) t0.y, bottom = (int) t0.y;
-								
-								if (t1.x < left)  { left  = (int) t1.x; } if (t2.x < left)  { left = (int) t2.x; }
-								if (t1.x > right) { right = (int) t1.x; } if (t2.x > right) { left = (int) t2.x; }
+								// Get (u;v) coordinates
+								int u = (int) (((x - left) / (float) deltaX) * (textures.get(textureID).textureImage.getWidth()  - 1));
+								int v = (int) (((y - top)  / (float) deltaY) * (textures.get(textureID).textureImage.getHeight() - 1));
 
-								if (t1.y < top)    { top    = (int) t1.y; } if (t2.y < top)    { top    = (int) t2.y; }
-								if (t1.y > bottom) { bottom = (int) t1.y; } if (t2.y > bottom) { bottom = (int) t2.y; }
-								
-								int u = (int) (((x - left) / (float) (right - left)) * (textures.get(textureID).textureImage.getWidth() - 1));	
-								int v = (int) (((y - top)  / (float) (bottom - top)) * (textures.get(textureID).textureImage.getHeight() - 1));
-								
+								// Sample color from texture
 								color = textures.get(textureID).sample(u, v);
 							} else { // Triangulate the pixel color (pun intended)
 								// For every vertex
 								for (int c = 0; c < 3; c++) {
-									color.add(Vector.mul(this.colors[c], weights[c]));
+									color.add(Vector.mul(this.colors[c], VertexPositionWeights[c]));
 								}
 								
-								color.div(weightSum);
+								color.div(VertexPositionWeightSum);
 							}
 							
 							// Limit values between 0 and 255
@@ -636,7 +638,13 @@ public abstract class Engine {
 		}
 		
 		public Vector sample(int _u, int _v) {
-			return new Vector(new Color(textureImage.getRGB(_u, _v)));
+			if (_u >= 0 && _u < this.textureImage.getWidth()) {
+				if (_v >= 0 && _v < this.textureImage.getHeight()) {
+					return new Vector(new Color(textureImage.getRGB(_u, _v)));
+				}
+			}
+						
+			return new Vector(0, 0, 0);
 		}
 	};
 

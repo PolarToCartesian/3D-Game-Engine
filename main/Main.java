@@ -12,6 +12,7 @@ public class Main extends Engine {
 		this.setBackgroundColor(Color.BLUE);
 		//this.loadModel("res/teapot.obj", true);
 		this.addTexture(new Texture("res/brick.png"));
+		this.addTexture(new Texture("res/grass.png"));
 		this.addTriangle(new Triangle(
 				new Vector[] {
 						new Vector(1,  1, 0),
@@ -30,7 +31,7 @@ public class Main extends Engine {
 				new Vector[] {
 						new Vector(1,  -1, 0),
 						new Vector(-1, -1, 0),
-						new Vector(-1,  1, 0),
+						new Vector(-1, 1, 0),
 				},
 				new Vector[] {
 						new Vector(255, 0, 0),
@@ -40,6 +41,95 @@ public class Main extends Engine {
 				0,
 				true
 		));
+		this.addTriangle(new Triangle(
+				new Vector[] {
+						new Vector(3,  -1, 0),
+						new Vector(1, -1, 0),
+						new Vector(1, 1, 0),
+				},
+				new Vector[] {
+						new Vector(255, 0, 0),
+						new Vector(255, 0, 0),
+						new Vector(255, 0, 0),
+				},
+				1,
+				true
+		));
+		this.addTriangle(new Triangle(
+				new Vector[] {
+						new Vector(3,  1, 0),
+						new Vector(3, -1, 0),
+						new Vector(1, 1, 0),
+				},
+				new Vector[] {
+						new Vector(255, 0, 0),
+						new Vector(255, 0, 0),
+						new Vector(255, 0, 0),
+				},
+				1,
+				true
+		));
+		
+		
+		this.addTriangle(new Triangle(
+				new Vector[] {
+						new Vector(3,  1, 0),
+						new Vector(1, 1, 0),
+						new Vector(1, 3, 0),
+				},
+				new Vector[] {
+						new Vector(255, 0, 0),
+						new Vector(255, 0, 0),
+						new Vector(255, 0, 0),
+				},
+				1,
+				true
+		));
+		this.addTriangle(new Triangle(
+				new Vector[] {
+						new Vector(3,  3, 0),
+						new Vector(3, 1, 0),
+						new Vector(1, 3, 0),
+				},
+				new Vector[] {
+						new Vector(255, 0, 0),
+						new Vector(255, 0, 0),
+						new Vector(255, 0, 0),
+				},
+				0,
+				true
+		));
+		
+		
+		this.addTriangle(new Triangle(
+				new Vector[] {
+						new Vector(1,  1, 0),
+						new Vector(-1, 1, 0),
+						new Vector(-1, 3, 0),
+				},
+				new Vector[] {
+						new Vector(255, 0, 0),
+						new Vector(255, 0, 0),
+						new Vector(255, 0, 0),
+				},
+				0,
+				true
+		));
+		this.addTriangle(new Triangle(
+				new Vector[] {
+						new Vector(1,  3, 0),
+						new Vector(1, 1, 0),
+						new Vector(-1, 3, 0),
+				},
+				new Vector[] {
+						new Vector(255, 0, 0),
+						new Vector(255, 0, 0),
+						new Vector(255, 0, 0),
+				},
+				1,
+				false
+		));
+
 		this.addLight(new Light(Camera.position, new Vector(255, 255, 255), 5f));
 		
 		run();	
