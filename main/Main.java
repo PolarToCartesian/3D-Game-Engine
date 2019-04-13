@@ -52,7 +52,7 @@ public class Main extends Engine {
 						new Vector(255, 0, 0),
 						new Vector(255, 0, 0),
 				},
-				1,
+				0,
 				true
 		));
 		this.addTriangle(new Triangle(
@@ -66,7 +66,7 @@ public class Main extends Engine {
 						new Vector(255, 0, 0),
 						new Vector(255, 0, 0),
 				},
-				1,
+				0,
 				true
 		));
 		
@@ -82,7 +82,7 @@ public class Main extends Engine {
 						new Vector(255, 0, 0),
 						new Vector(255, 0, 0),
 				},
-				1,
+				0,
 				true
 		));
 		this.addTriangle(new Triangle(
@@ -127,7 +127,7 @@ public class Main extends Engine {
 						new Vector(255, 0, 0),
 				},
 				1,
-				false
+				true
 		));
 
 		this.addLight(new Light(Camera.position, new Vector(255, 255, 255), 5f));
