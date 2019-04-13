@@ -130,7 +130,7 @@ public class Main extends Engine {
 				true
 		));
 
-		this.addLight(new Light(Camera.position, new Vector(255, 255, 255), 5f));
+		this.addLight(new Light(Camera.position, 5f));
 		
 		run();	
 	}

@@ -456,13 +456,11 @@ public abstract class Engine {
 
 	public static class Light {
 		public Vector position;
-		public Vector color;
 
 		public double intensity;
 
-		public Light(Vector _position, Vector _color, double _intensity) {
+		public Light(Vector _position, double _intensity) {
 			this.position = _position;
-			this.color = _color;
 			this.intensity = _intensity;
 		}
 	}
@@ -621,9 +619,7 @@ public abstract class Engine {
 
 		public void renderTexturedTriangle(Vector[] vertices, int textureID, BufferedImage pixelBuffer, int _screenWidth, int _screenHeight, float[] brightnesses) {
 			// https://codeplea.com/triangular-interpolation
-			
-			Vector[] nonMutatedVertices = vertices.clone();
-			
+						
 			// Step 1 : calculate denominator
 						
 			double denominator = (vertices[1].y - vertices[2].y) * (vertices[0].x - vertices[2].x) + (vertices[2].x - vertices[1].x) * (vertices[0].y - vertices[2].y);
@@ -634,40 +630,44 @@ public abstract class Engine {
 			double preCalc2 = (vertices[2].x - vertices[1].x);
 			double preCalc3 = (vertices[2].y - vertices[0].y);
 			double preCalc4 = (vertices[0].x - vertices[2].x);
+			
+			Vector t0 = vertices[0].copy();
+			Vector t1 = vertices[1].copy();
+			Vector t2 = vertices[2].copy();
+			
+			// left, right, top and bottom most points of triangle (for texturing (u;v))
 						
-			// left, right, top and bottom most points of triangle (for texturing)
+			int left = (int) t0.x, right = (int) t0.x, top = (int) t0.y, bottom = (int) t0.y;
 						
-			int left = (int) vertices[0].x, right = (int) vertices[0].x, top = (int) vertices[0].y, bottom = (int) vertices[0].y;
-						
-			if (vertices[1].x < left)   { left   = (int) vertices[1].x; } if (vertices[2].x < left)   { left   = (int) vertices[2].x; }
-			if (vertices[1].x > right)  { right  = (int) vertices[1].x; } if (vertices[2].x > right)  { left   = (int) vertices[2].x; }
-			if (vertices[1].y < top)    { top    = (int) vertices[1].y; } if (vertices[2].y < top)    { top    = (int) vertices[2].y; }
-			if (vertices[1].y > bottom) { bottom = (int) vertices[1].y; } if (vertices[2].y > bottom) { bottom = (int) vertices[2].y; }
+			if (t1.x < left)   { left   = (int) t1.x; } if (t2.x < left)   { left   = (int) t2.x; }
+			if (t1.x > right)  { right  = (int) t1.x; } if (t2.x > right)  { left   = (int) t2.x; }
+			if (t1.y < top)    { top    = (int) t1.y; } if (t2.y < top)    { top    = (int) t2.y; }
+			if (t1.y > bottom) { bottom = (int) t1.y; } if (t2.y > bottom) { bottom = (int) t2.y; }
 						
 			int deltaX = right - left, deltaY = bottom - top;
 			
 			// https://github.com/ssloy/tinyrenderer/wiki/Lesson-2:-Triangle-rasterization-and-back-face-culling
 						
-			if (vertices[0].y == vertices[1].y && vertices[0].y == vertices[2].y) return;
+			if (t0.y == t1.y && t0.y == t2.y) return;
 
-			if (vertices[0].y > vertices[1].y) { Vector temp = vertices[0].copy(); vertices[0] = vertices[1].copy(); vertices[1] = temp.copy(); }
-			if (vertices[0].y > vertices[2].y) { Vector temp = vertices[0].copy(); vertices[0] = vertices[2].copy(); vertices[2] = temp.copy(); }
-			if (vertices[1].y > vertices[2].y) { Vector temp = vertices[2].copy(); vertices[2] = vertices[1].copy(); vertices[1] = temp.copy(); }
+			if (t0.y > t1.y) { Vector temp = t0.copy(); t0 = t1.copy(); t1 = temp.copy(); }
+			if (t0.y > t2.y) { Vector temp = t0.copy(); t0 = t2.copy(); t2 = temp.copy(); }
+			if (t1.y > t2.y) { Vector temp = t2.copy(); t2 = t1.copy(); t1 = temp.copy(); }
 						
-			int total_height = (int) (vertices[2].y - vertices[0].y);
+			int total_height = (int) (t2.y - t0.y);
 
 			if (total_height >= _screenHeight) { total_height = _screenHeight - 1; }
 						
-			for (int i = 0; i < total_height; i++) {
-				boolean second_half = i > vertices[1].y - vertices[0].y || vertices[1].y == vertices[0].y;
+			for (int i = 0; i < total_height + 1; i++) {
+				boolean second_half = i > t1.y - t0.y || t1.y == t0.y;
 
-				int segment_height = (int) (second_half ? vertices[2].y - vertices[1].y : vertices[1].y - vertices[0].y);
+				int segment_height = (int) (second_half ? t2.y - t1.y : t1.y - t0.y);
 
 				double alpha = i / (double) total_height;
-				double beta  = (i - (second_half ? vertices[1].y - vertices[0].y : 0)) / segment_height;
+				double beta  = (i - (second_half ? t1.y - t0.y : 0)) / segment_height;
 
-				Vector A = Vector.add( vertices[0], Vector.mul( Vector.sub(vertices[2], vertices[0]) , alpha ) );
-				Vector B = second_half ?  Vector.add( vertices[1], Vector.mul( Vector.sub(vertices[2], vertices[1]) , beta ) ) : Vector.add( vertices[0], Vector.mul( Vector.sub(vertices[1], vertices[0]), beta ));
+				Vector A = Vector.add( t0, Vector.mul( Vector.sub(t2, t0) , alpha ) );
+				Vector B = second_half ?  Vector.add( t1, Vector.mul( Vector.sub(t2, t1) , beta ) ) : Vector.add( t0, Vector.mul( Vector.sub(t1, t0), beta ));
 
 				if (A.x > B.x) { Vector temp = A.copy(); A = B.copy(); B = temp.copy(); }
 
@@ -675,13 +675,14 @@ public abstract class Engine {
 				int xEnd   = (int) ((B.x < _screenWidth - 1) ? B.x : _screenWidth - 1);
 											
 				for (int x = xStart; x <= xEnd; x++) {
-					int y = (int) (vertices[0].y + i);
+					int y = (int) (t0.y + i);
 
+					// Check If Pixel Is Within the rendered area
 					if (y >= 0 && y < _screenHeight) {
 						// https://codeplea.com/triangular-interpolation
 									
-						double preCalc5 = (x - nonMutatedVertices[2].x);
-						double preCalc6 = (y - nonMutatedVertices[2].y);
+						double preCalc5 = (x - vertices[2].x);
+						double preCalc6 = (y - vertices[2].y);
 									
 						double[] VertexPositionWeights = new double[] {
 							(preCalc1 * preCalc5 + preCalc2 * preCalc6) / denominator, 
@@ -740,9 +741,7 @@ public abstract class Engine {
 
 		public void renderColoredTriangle(Vector[] vertices, BufferedImage pixelBuffer, int _screenWidth, int _screenHeight, Vector[] brightnedColors) {
 			// https://codeplea.com/triangular-interpolation
-			
-			Vector[] nonMutatedVertices = vertices.clone();
-			
+						
 			// Step 1 : calculate denominator
 			
 			double denominator = (vertices[1].y - vertices[2].y) * (vertices[0].x - vertices[2].x) + (vertices[2].x - vertices[1].x) * (vertices[0].y - vertices[2].y);
@@ -753,29 +752,33 @@ public abstract class Engine {
 			double preCalc2 = (vertices[2].x - vertices[1].x);
 			double preCalc3 = (vertices[2].y - vertices[0].y);
 			double preCalc4 = (vertices[0].x - vertices[2].x);
+			
+			Vector t0 = vertices[0].copy();
+			Vector t1 = vertices[1].copy();
+			Vector t2 = vertices[2].copy();
 						
 			// https://github.com/ssloy/tinyrenderer/wiki/Lesson-2:-Triangle-rasterization-and-back-face-culling
 						
-			if (vertices[0].y == vertices[1].y && vertices[0].y == vertices[2].y) return;
+			if (t0.y == t1.y && t0.y == t2.y) return;
 
-			if (vertices[0].y > vertices[1].y) { Vector temp = vertices[0].copy(); vertices[0] = vertices[1].copy(); vertices[1] = temp.copy(); }
-			if (vertices[0].y > vertices[2].y) { Vector temp = vertices[0].copy(); vertices[0] = vertices[2].copy(); vertices[2] = temp.copy(); }
-			if (vertices[1].y > vertices[2].y) { Vector temp = vertices[2].copy(); vertices[2] = vertices[1].copy(); vertices[1] = temp.copy(); }
+			if (t0.y > t1.y) { Vector temp = t0.copy(); t0 = t1.copy(); t1 = temp.copy(); }
+			if (t0.y > t2.y) { Vector temp = t0.copy(); t0 = t2.copy(); t2 = temp.copy(); }
+			if (t1.y > t2.y) { Vector temp = t2.copy(); t2 = t1.copy(); t1 = temp.copy(); }
 						
-			int total_height = (int) (vertices[2].y - vertices[0].y);
+			int total_height = (int) (t2.y - t0.y);
 
 			if (total_height >= _screenHeight) { total_height = _screenHeight - 1; }
 						
 			for (int i = 0; i < total_height; i++) {
-				boolean second_half = i > vertices[1].y - vertices[0].y || vertices[1].y == vertices[0].y;
+				boolean second_half = i > t1.y - t0.y || t1.y == t0.y;
 
-				int segment_height = (int) (second_half ? vertices[2].y - vertices[1].y : vertices[1].y - vertices[0].y);
+				int segment_height = (int) (second_half ? t2.y - t1.y : t1.y - t0.y);
 
 				double alpha = i / (double) total_height;
-				double beta  = (i - (second_half ? vertices[1].y - vertices[0].y : 0)) / segment_height;
+				double beta  = (i - (second_half ? t1.y - t0.y : 0)) / segment_height;
 
-				Vector A = Vector.add( vertices[0], Vector.mul( Vector.sub(vertices[2], vertices[0]) , alpha ) );
-				Vector B = second_half ? Vector.add( vertices[1], Vector.mul( Vector.sub(vertices[2], vertices[1]) , beta ) ) : Vector.add( vertices[0], Vector.mul( Vector.sub(vertices[1], vertices[0]), beta ));
+				Vector A = Vector.add( t0, Vector.mul( Vector.sub(t2, t0) , alpha ) );
+				Vector B = second_half ? Vector.add( t1, Vector.mul( Vector.sub(t2, t1) , beta ) ) : Vector.add( t0, Vector.mul( Vector.sub(t1, t0), beta ));
 
 				if (A.x > B.x) { Vector temp = A.copy(); A = B.copy(); B = temp.copy(); }
 
@@ -785,13 +788,13 @@ public abstract class Engine {
 				boolean doBreak = false;
 							
 				for (int x = xStart; x <= xEnd; x++) {
-					int y = (int) (vertices[0].y + i);
+					int y = (int) (t0.y + i);
 
 					if (y >= 0 && y < _screenHeight) {
 						// https://codeplea.com/triangular-interpolation
 									
-						double preCalc5 = (x - nonMutatedVertices[2].x);
-						double preCalc6 = (y - nonMutatedVertices[2].y);
+						double preCalc5 = (x - vertices[2].x);
+						double preCalc6 = (y - vertices[2].y);
 							
 						double[] VertexPositionWeights = new double[] {
 							(preCalc1 * preCalc5 + preCalc2 * preCalc6) / denominator, 
@@ -921,10 +924,11 @@ public abstract class Engine {
 
 						// If The Triangle Is In Front Of The Camera
 						if (!triangleBehindCamera) {
-							if (triangle.doUseTexture) {
+							// If the triangle should be rendered with a texture and that texture exists
+							if (triangle.doUseTexture && triangle.textureID < textures.size()) {
 								float[] brightnesses = getIllimunation(rotatedVertices, surfaceNormal);
 								renderTexturedTriangle(manipulatedVertices, triangle.textureID, pixelBuffer, screenWidth, screenHeight, brightnesses);
-							} else {
+							} else { // Render the triangle with the vertices' color
 								Vector[] brightenedColors = getColorsWIllumination(rotatedVertices, surfaceNormal, triangle.colors);
 								renderColoredTriangle(manipulatedVertices, pixelBuffer, screenWidth, screenHeight, brightenedColors);
 							}
