@@ -2,7 +2,12 @@ package main;
 
 import java.awt.Color;
 
+import engine.Camera;
 import engine.Engine;
+import engine.Light;
+import engine.Texture;
+import engine.Triangle;
+import engine.Vector;
 
 public class Main extends Engine {
 	
@@ -137,8 +142,8 @@ public class Main extends Engine {
 
 	@Override
 	public void update(long deltaTimeMs) {
-		/*for (Triangle tr : triangles) {
-			tr.rotation.y += 0.0001f * deltaTimeMs;
+		/*for (int i = 0; i < this.numTriangles(); i++) {
+			this.getTriangle(i).rotation.z += deltaTimeMs * 0.00001f;
 		}*/
 	}
 
